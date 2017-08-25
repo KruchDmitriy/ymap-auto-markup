@@ -162,7 +162,7 @@ int main() {
     using namespace std;
     using namespace cv;
 
-    img = imread("../../hog_10K_small.png");
+    img = imread("../results/hog_10K_small.png");
 
     // for (int i = 0; i < img.rows; i++) {
     //     for (int j = 0; j < img.cols; j++) {
