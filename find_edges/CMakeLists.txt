@@ -10,7 +10,18 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Werror -Wall")
 endif()
 
-find_package(OpenCV REQUIRED)
+
+
 add_executable(${project_name} ${SOURCES})
+
+find_package(OpenCV REQUIRED)
 target_link_libraries(${project_name} ${OpenCV_LIBS})
 
+set(Boost_USE_STATIC_LIBS        ON) # only find static libs
+set(Boost_USE_MULTITHREADED      ON)
+set(Boost_USE_STATIC_RUNTIME    OFF)
+
+find_package(Boost REQUIRED)
+
+target_include_directories(${project_name} PRIVATE ${Boost_INCLUDEDIR})
+#target_link_libraries(${project_name} ${Boost_UBLAS_LIBRARY_RELEASE})

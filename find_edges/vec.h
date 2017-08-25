@@ -39,6 +39,8 @@ struct vec {
         y /= rhs;
         return *this;
     }
+
+    vec toCoords(const vec& a, double b);
 };
 
 vec operator +(vec lhs, const vec& rhs) {
