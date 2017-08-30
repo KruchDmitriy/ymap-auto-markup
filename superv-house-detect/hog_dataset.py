@@ -56,8 +56,6 @@ def main():
     # plt.imshow(image, interpolation='none')
     # plt.show()
 
-    idx = 0
-
     if MODE == 'TEST':
         with open('features_hog_house.txt', 'w') as hog_house:
             img = cv2.imread(TEST_IMAGE)
@@ -91,47 +89,41 @@ def main():
                     circle_desc_params['radius'],
                     circle_desc_params['radius'], cv2.BORDER_REPLICATE)
 
-                for count in range(30):
-                    i = randint(0, img.shape[0] - 1 - BBOX_HEIGHT)
-                    j = randint(0, img.shape[1] - 1 - BBOX_WIDTH)
+                for count in range(1500):
+                    x = randint(0, img.shape[0])
+                    y = randint(0, img.shape[1])
+                    i = x - x % BBOX_WIDTH
+                    j = y - y % BBOX_HEIGHT
 
                     hist = hog.compute(img, win_stride, padding, locations=((i, j),))
                     hist = hist.reshape((hist.shape[0],))
-
-                    for sample in range(50):
-                        n_samples += 1
-
+                    n_samples += 1
+                    if MODE == "CREATE_HOG_CIRCLES":
+                        vec = np.zeros(shape=(hog.getDescriptorSize() +
+                                              circ.get_descriptor_size() + 5))
+                        circles = circ.calc(bordered_image, x + circle_desc_params['radius'],
+                                            y + circle_desc_params['radius'])
+                        features = np.concatenate([hist, circles])
+                    else:
                         vec = np.zeros(shape=(hog.getDescriptorSize() + 5))
-                        x = randint(0, BBOX_HEIGHT)
-                        y = randint(0, BBOX_WIDTH)
+                        features = hist
 
-                        if MODE == "CREATE_HOG_CIRCLES":
-                            vec = np.zeros(shape=(hog.getDescriptorSize() +
-                                                circ.get_descriptor_size() + 5))
-                            circles = circ.calc(bordered_image, i + x + circle_desc_params['radius'],
-                                                                j + y + circle_desc_params['radius'])
-                            features = np.concatenate([hist, circles])
-                        else:
-                            features = hist
+                    vec[:-5] = features
+                    vec[-5] = x - i
+                    vec[-4] = y - j
+                    vec[-3] = img[x][y][0]
+                    vec[-2] = img[x][y][1]
+                    vec[-1] = img[x][y][2]
 
-                        vec[:-5] = features
-                        vec[-5] = x
-                        vec[-4] = y
-                        vec[-3] = img[i + x][j + y][0]
-                        vec[-2] = img[i + x][j + y][1]
-                        vec[-1] = img[i + x][j + y][2]
+                    lab = int((label[i + x][j + y] == [255, 255, 255])[0])
+                    str_id = "%s-(%d,%d)" % (file, x, y)
 
-                        lab = int((label[i + x][j + y] == [255, 255, 255])[0])
-                        str_id = str(idx)
+                    feat.write(str(n_samples) + '\t' + str(lab) + '\t' + str_id + '\t0\t')
+                    vec.tofile(feat, sep='\t')
+                    feat.write('\n')
 
-                        feat.write(str_id + '\t' + str(lab) + '\t' + str_id + '\t0\t')
-                        vec.tofile(feat, sep='\t')
-                        feat.write('\n')
-
-                        idx += 1
-
-                        if n_samples % 100 == 0:
-                            print(n_samples)
+                    if n_samples % 100 == 0:
+                        print(n_samples)
 
 
 if __name__ == "__main__":
