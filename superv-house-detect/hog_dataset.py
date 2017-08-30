@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 from os import listdir
 from random import randint
 from numpy.random import permutation
+from circle_desc import CircleDescriptor
 
 
 PATH_TO_IMG = "../preprocessedData/imgs/"
@@ -17,13 +18,14 @@ BBOX_HALF_HEIGHT = BBOX_HEIGHT // 2
 
 TEST_IMAGE = "../preprocessedData/imgs/3band_AOI_1_RIO_img4599.png"
 # MODE = "TEST"
-MODE = "CREATE"
+# MODE = "CREATE_HOG"
+MODE = "CREATE_HOG_CIRCLES"
 
 def main():
     hog_params = {
         "win_size": (BBOX_HEIGHT, BBOX_WIDTH),
         "block_size": (16, 16),
-        "block_stride": (8, 8),
+        "block_stride": (16, 16),
         "cell_size": (8, 8),
         "nbins": 9,
         "deriv_aperture": 3,
@@ -34,8 +36,16 @@ def main():
         "nlevels": 64
     }
 
+    circle_desc_params = {
+        "radius": 32,
+        "num_circles": 12
+    }
+
     hog = cv2.HOGDescriptor(*hog_params.values())
-    print(hog.getDescriptorSize())
+    print("hog desc size = " + str(hog.getDescriptorSize()))
+
+    circ = CircleDescriptor(*circle_desc_params.values())
+    print("circ desc size = " + str(circ.get_descriptor_size()))
     input()
     # return
 
@@ -69,11 +79,17 @@ def main():
                             vec.tofile(hog_house, sep='\t')
                             hog_house.write('\n')
     else:
-        with open('features_hog_full.txt', 'w') as feat:
+        with open('features_hog_circles.txt', 'w') as feat:
             n_samples = 0
             for file in permutation(listdir(PATH_TO_IMG)):
                 img = cv2.imread(PATH_TO_IMG + file)
                 label = cv2.imread(PATH_TO_LABELS + file)
+
+                bordered_image = cv2.copyMakeBorder(img,
+                    circle_desc_params['radius'],
+                    circle_desc_params['radius'],
+                    circle_desc_params['radius'],
+                    circle_desc_params['radius'], cv2.BORDER_REPLICATE)
 
                 for count in range(30):
                     i = randint(0, img.shape[0] - 1 - BBOX_HEIGHT)
@@ -84,12 +100,21 @@ def main():
 
                     for sample in range(50):
                         n_samples += 1
-                        vec = np.zeros(shape=(hog.getDescriptorSize() + 5))
 
+                        vec = np.zeros(shape=(hog.getDescriptorSize() + 5))
                         x = randint(0, BBOX_HEIGHT)
                         y = randint(0, BBOX_WIDTH)
 
-                        vec[:-5] = hist
+                        if MODE == "CREATE_HOG_CIRCLES":
+                            vec = np.zeros(shape=(hog.getDescriptorSize() +
+                                                circ.get_descriptor_size() + 5))
+                            circles = circ.calc(bordered_image, i + x + circle_desc_params['radius'],
+                                                                j + y + circle_desc_params['radius'])
+                            features = np.concatenate([hist, circles])
+                        else:
+                            features = hist
+
+                        vec[:-5] = features
                         vec[-5] = x
                         vec[-4] = y
                         vec[-3] = img[i + x][j + y][0]
@@ -104,8 +129,9 @@ def main():
                         feat.write('\n')
 
                         idx += 1
-            if n_samples % 100 == 0:
-                print(n_samples)
+
+                        if n_samples % 100 == 0:
+                            print(n_samples)
 
 
 if __name__ == "__main__":
