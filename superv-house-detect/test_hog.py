@@ -16,9 +16,9 @@ BBOX_HEIGHT = 64
 BBOX_HALF_WIDTH = BBOX_WIDTH // 2
 BBOX_HALF_HEIGHT = BBOX_HEIGHT // 2
 
-TEST_IMAGE = PATH_TO_IMG + "3band_AOI_1_RIO_img1088.png"
+TEST_IMAGE = PATH_TO_IMG + "3band_AOI_1_RIO_img4599.png"
 RESULT_IMAGE = "./hog_10K.png"
-LABEL_IMAGE = PATH_TO_LABELS + "3band_AOI_1_RIO_img1088.png"
+LABEL_IMAGE = PATH_TO_LABELS + "3band_AOI_1_RIO_img4599.png"
 
 
 def iou(src, lab):
@@ -176,7 +176,7 @@ def main():
     #     plt.show()
     #     return 0
 
-    ensemble = Ensemble('features_hog_300K.txt.model', 6, False)
+    ensemble = Ensemble('features_hog_circles_test.txt.model', 6, False)
 
     hog_params = {
         "win_size": (BBOX_HEIGHT, BBOX_WIDTH),
@@ -241,7 +241,7 @@ def main():
     dst = normalize(probas)
 
     dst = cv2.normalize(dst, dst, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC3)
-    cv2.imwrite('hog_test_01.png', dst)
+    cv2.imwrite('hog_test.png', dst)
     plt.imshow(dst)
     plt.show()
 
