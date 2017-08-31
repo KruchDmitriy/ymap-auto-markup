@@ -81,14 +81,23 @@ def main():
         with open('features_hog_circles_test2.txt', 'w') as feat:
             n_samples = 0
             for file in permutation(listdir(PATH_TO_IMG)):
-                img = cv2.imread(PATH_TO_IMG + file)
-                label = cv2.imread(PATH_TO_LABELS + file)
-                # img = cv2.imread(PATH_TO_IMG + "3band_AOI_1_RIO_img4599.png")
-                # label = cv2.imread(PATH_TO_LABELS + "3band_AOI_1_RIO_img4599.png")
+                # img = cv2.imread(PATH_TO_IMG + file)
+                # label = cv2.imread(PATH_TO_LABELS + file)
+                img = cv2.imread(PATH_TO_IMG + "3band_AOI_1_RIO_img4599.png")
+                label = cv2.imread(PATH_TO_LABELS + "3band_AOI_1_RIO_img4599.png")
 
+
+
+                x = 57
+                y = 398
+                i = x - x % BBOX_HEIGHT
+                j = y - y % BBOX_WIDTH
                 hist = hog.compute(img, win_stride, padding, locations=((i, j),))
                 print(hist)
                 input()
+
+
+
 
                 bordered_image = cv2.copyMakeBorder(img,
                     circle_desc_params['radius'],

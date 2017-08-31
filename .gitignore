@@ -6,3 +6,4 @@ firefox-addon/*
 firefox-ext/*
 preprocessedData/*
 tmp/*
+*.so

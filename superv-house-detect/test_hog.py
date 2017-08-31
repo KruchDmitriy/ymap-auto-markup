@@ -5,10 +5,13 @@ import cv2
 import time
 from matplotlib import pyplot as plt
 from os.path import exists
+from circle_desc import CircleDescriptor
 
 
 PATH_TO_IMG = "../preprocessedData/imgs/"
 PATH_TO_LABELS = "../preprocessedData/labels/"
+PATH_TO_MODELS = "../data/models/"
+PATH_TO_RESULTS = "../results/"
 
 BBOX_WIDTH = 64
 BBOX_HEIGHT = 64
@@ -18,7 +21,11 @@ BBOX_HALF_HEIGHT = BBOX_HEIGHT // 2
 
 TEST_IMAGE = PATH_TO_IMG + "3band_AOI_1_RIO_img4599.png"
 RESULT_IMAGE = "./hog_10K.png"
+# RESULT_IMAGE = PATH_TO_RESULTS + "hog_circles_10K.png"
 LABEL_IMAGE = PATH_TO_LABELS + "3band_AOI_1_RIO_img4599.png"
+MODEL = PATH_TO_MODELS + 'features_hog_circles_250K.txt.model'
+MODE = "WITH_CIRCLES"
+
 
 
 def iou(src, lab):
@@ -50,7 +57,6 @@ def grad_descent(grad, lrate=0.001):
         eps = norm(x - x_prev)
 
         n_iter += 1
-        # print(eps)
         if n_iter % 100 == 0:
             print(str(n_iter) + " " + str(eps))
 
@@ -88,8 +94,6 @@ def calc_mean(probas, s):
             j = y * BBOX_HALF_WIDTH
             dst[i: i + BBOX_HALF_HEIGHT, j: j + BBOX_HALF_WIDTH] /= neighbs
 
-    # print(dst)
-
     return dst
 
 
@@ -112,8 +116,6 @@ def normalize(probas):
     # plt.axis('off')
     # plt.imshow(test)
     # plt.show()
-
-    r_width = probas.shape[1]
 
     L = width * height
     N = np.eye(L) * -1.
@@ -149,34 +151,34 @@ def normalize(probas):
     # plt.imshow(N)
     # plt.show()
     s = grad_descent(N)
-    input()
-
     dst = calc_mean(probas, s)
 
     return dst
 
 def main():
-    # if exists(RESULT_IMAGE):
-    #     img = cv2.imread(RESULT_IMAGE)
+    if exists(RESULT_IMAGE):
+        img = cv2.imread(RESULT_IMAGE)
 
-    #     one_channel = img[:, :, 0]
-    #     thresh, dst = cv2.threshold(one_channel, 70, 255, cv2.THRESH_BINARY)
-    #     print(thresh)
+        one_channel = img[:, :, 0]
+        thresh, dst = cv2.threshold(one_channel, 85, 255, cv2.THRESH_BINARY)
+        print(thresh)
 
-    #     label = cv2.imread(LABEL_IMAGE)
-    #     lab_one_channel = label[:, :, 0]
+        label = cv2.imread(LABEL_IMAGE)
+        lab_one_channel = label[:, :, 0]
 
-    #     dst_ = np.zeros(lab_one_channel.shape)
-    #     dst_[:dst.shape[0], :dst.shape[1]] = dst
+        dst_ = np.zeros(lab_one_channel.shape)
+        dst_[:dst.shape[0], :dst.shape[1]] = dst
 
-    #     print("IoU = ", iou(dst_, lab_one_channel))
+        print("IoU = ", iou(dst_, lab_one_channel))
 
-    #     plt.axis('off')
-    #     plt.imshow(dst)
-    #     plt.show()
-    #     return 0
+        plt.axis('off')
+        plt.imshow(dst)
+        plt.show()
+        return 0
 
-    ensemble = Ensemble('features_hog_circles_test.txt.model', 6, False)
+    ensemble = Ensemble('features_hog_circles_test.txt.model', 6, True)
+    # ensemble = Ensemble(MODEL, 6, True)
+    input()
 
     hog_params = {
         "win_size": (BBOX_HEIGHT, BBOX_WIDTH),
@@ -194,10 +196,21 @@ def main():
     win_stride = (8, 8)
     padding = (0, 0)
 
+    circle_desc_params = {
+        "radius": 32,
+        "num_circles": 12
+    }
+
     hog = cv2.HOGDescriptor(*hog_params.values())
+    circ = CircleDescriptor(*circle_desc_params.values())
 
     img = cv2.imread(TEST_IMAGE)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    bordered_image = cv2.copyMakeBorder(img,
+                    circle_desc_params['radius'],
+                    circle_desc_params['radius'],
+                    circle_desc_params['radius'],
+                    circle_desc_params['radius'], cv2.BORDER_REPLICATE)
     # img = cv2.resize(img, (img.shape[0] // 2, img.shape[1] // 2))
     # plt.imshow(img)
     # plt.show()
@@ -220,7 +233,19 @@ def main():
             for x in range(BBOX_WIDTH):
                 for y in range(BBOX_HEIGHT):
                     vec = np.zeros(shape=(hog.getDescriptorSize() + 5), dtype='float64')
-                    vec[:-5] = hist
+
+                    if MODE == "WITH_CIRCLES":
+                        vec = np.zeros(shape=(hog.getDescriptorSize()
+                                        + circ.get_descriptor_size() + 5),
+                                        dtype='float64')
+
+                        circles = circ.calc(bordered_image, i + x + circle_desc_params['radius'],
+                                                            j + y + circle_desc_params['radius'])
+                        features = np.concatenate([hist, circles])
+                    else:
+                        features = hist
+
+                    vec[:-5] = features
                     vec[-5] = x
                     vec[-4] = y
                     vec[-3] = img[i + x][j + y][0]
@@ -234,14 +259,15 @@ def main():
                     # end = time.time()
                     # print('elapsed time: ', end - start)
 
-                    # val = max(dst[i + x][j + y][0], int(255 * value))
-                    # dst[i + x][j + y] = np.array([val, val, val])
+                    val = max(dst[i + x][j + y][0], int(255 * value))
+                    dst[i + x][j + y] = np.array([val, val, val])
         # probas.dump(dump_probas_file)
-
+    plt.imshow(dst)
+    plt.show()
     dst = normalize(probas)
 
     dst = cv2.normalize(dst, dst, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC3)
-    cv2.imwrite('hog_test.png', dst)
+    cv2.imwrite(RESULT_IMAGE, dst)
     plt.imshow(dst)
     plt.show()
 
