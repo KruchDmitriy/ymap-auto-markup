@@ -1,6 +1,7 @@
 import numpy as np
 import time
 
+
 class ObliviousTree:
     def __init__(self, model, depth, coeff, log=False):
         self.features = np.zeros(shape=depth, dtype='int64')
@@ -29,9 +30,8 @@ class ObliviousTree:
 
     def predict(self, x):
         index = 0
-        # while ()
-            # index = int(x[self.features[i]] < self.conditions[i]) + index * 2
-            # i += 1
+        for i in range(6):
+            index = int(x[self.features[i]] < self.conditions[i]) + index * 2
 
         return self.values[index] * self.coeff
 
@@ -41,7 +41,7 @@ class Ensemble:
         self.log = log
 
         with open(file, 'r') as model:
-            header = model.readline()
+            model.readline()
             num_trees = int(model.readline())
 
             print(num_trees)
@@ -60,7 +60,7 @@ class Ensemble:
 
         result = 0
         for tree in self.trees:
-            result += 1.0 #tree.predict(x)
+            result += tree.predict(x)
 
         end = time.time()
 
@@ -69,6 +69,6 @@ class Ensemble:
 
         return result
 
-if __name__ == "__main__":
-    ensemble = Ensemble('features21x21_300k.txt.model')
 
+if __name__ == "__main__":
+    ensemble = Ensemble('features21x21_300k.txt.model', 6)

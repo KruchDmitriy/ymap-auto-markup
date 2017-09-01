@@ -7,7 +7,7 @@ class CircleDescriptor:
         self.radius = radius
         self.num_circles = num_circles
         self.stride = radius / num_circles
-        self.moment_funcs = [ np.mean, np.var ]
+        self.moment_funcs = [np.mean, np.var]
         self.num_channels = num_channels
         self.LOG = LOG
         self.__create_rings()
@@ -63,11 +63,12 @@ class CircleDescriptor:
 
 def main():
     # smoke test
-    TEST_IMG = np.random.normal(0, 1, 65 * 65 * 3).reshape((65, 65, 3))
-    circ = CircleDescriptor(32, 12, LOG=True)
+    test_img = np.random.normal(0, 1, 65 * 65 * 3).reshape((65, 65, 3))
+    circle = CircleDescriptor(32, 12, LOG=True)
 
-    vec = circ.calc(TEST_IMG, 32, 32)
+    vec = circle.calc(test_img, 32, 32)
     print(vec)
+
 
 if __name__ == "__main__":
     main()

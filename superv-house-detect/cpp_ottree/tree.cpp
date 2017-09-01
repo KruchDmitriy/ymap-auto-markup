@@ -107,6 +107,11 @@ ensemble::ensemble(const char* model_file_name, unsigned int depth, bool log) {
         std::cout << n_trees << std::endl;
     }
 
+    if (n_trees <= 0) {
+        std::cout << "bad model " << model_file_name << std::endl;
+        throw std::exception();
+    }
+
     std::string line;
     for (size_t i = 0; i < n_trees; i++) {
         std::getline(model_file, line);
@@ -121,6 +126,8 @@ ensemble::ensemble(const char* model_file_name, unsigned int depth, bool log) {
             trees.push_back(new oblivious_tree(model_file, coeff, depth, log));
         }
     }
+
+    std::cout << "model loading finished" << std::endl;
 }
 
 double ensemble::predict(np::ndarray const& x) {

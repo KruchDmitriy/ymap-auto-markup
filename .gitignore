@@ -1,9 +1,11 @@
 labeler-app/data/*
 labeler-app/cgi-bin/__pycache__/*
+*/__pycache__/*
 labeler-app/log.txt
 data/*
 firefox-addon/*
 firefox-ext/*
-preprocessedData/*
+preprocessed-data/*
 tmp/*
 *.so
+*/.idea/*

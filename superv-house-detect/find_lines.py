@@ -1,9 +1,7 @@
 import numpy as np
 import cv2
 from matplotlib import pyplot as plt
-
-
-TEST_IMAGE = "hog_10K_small.png"
+from utils import DataManager
 
 
 def calc_coords(alpha, beta, tau_0, tau_1):
@@ -39,7 +37,6 @@ def find_edges(img, num_instances=100):
     # a, b, t0, t1 = np.meshgrid([alphas, betas, tau_0, tau_1])
     values = []
     max_value = -np.inf
-    args = None
 
     for i in range(num_instances):
         for j in range(side):
@@ -65,7 +62,6 @@ def find_edges(img, num_instances=100):
     plt.show()
 
 
-
 def target_function(img, alpha, beta, tau_0, tau_1):
     result = None
     a = np.array([np.cos(alpha), np.sin(alpha)])
@@ -83,23 +79,25 @@ def target_function(img, alpha, beta, tau_0, tau_1):
             inv_i = int(inv_x[0] + 0.5)
             inv_j = int(inv_x[1] + 0.5)
 
-            p_inv_x = np.log(img[inv_i][inv_j][0]) if inv_i < img.shape[0] and inv_i >= 0\
-                                                    and inv_j < img.shape[1] and inv_j >= 0 else 0.
+            p_inv_x = np.log(img[inv_i][inv_j][0]) if img.shape[0] > inv_i >= 0 \
+                                                      and img.shape[1] > inv_j >= 0 else 0.
 
             value = (np.dot(b, x) - beta) * (np.dot(b, x) - beta) * (p_x - p_inv_x)
-            if result == None:
+
+            if result is None:
                 result = value
             else:
                 result += value
 
-    if result == None:
+    if result is None:
         return -np.inf
 
     return result
 
 
 def main():
-    img = cv2.imread(TEST_IMAGE)
+    data_manager = DataManager()
+    img = cv2.imread(data_manager.get_path_to_img() + "hog_10K_small.png")
 
     dst = np.zeros(shape=img.shape)
     dst = cv2.normalize(img, dst, alpha=0., beta=1., norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_64F)

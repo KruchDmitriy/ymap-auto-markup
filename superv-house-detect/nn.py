@@ -8,15 +8,12 @@ from keras.layers.core import Dropout
 from keras.optimizers import Adam
 from keras.metrics import binary_crossentropy
 import numpy as np
-from os import listdir
 import cv2
 
-from matplotlib import pyplot as plt
+from utils import DataManager
 
-
-PATH_TO_IMG = "../preprocessedData/imgs/"
-PATH_TO_LABELS = "../preprocessedData/labels/"
 LOG = False
+
 
 def iou_metric(y_true, y_pred):
     true = y_true > 0
@@ -27,29 +24,16 @@ def iou_metric(y_true, y_pred):
     return inter / union
 
 
-def data_generator(chunk_size=500):
-    # imgs = []
-    # labels = []
-    for file in listdir(PATH_TO_IMG):
-        img = cv2.imread(PATH_TO_IMG + file)
-        img = cv2.resize(img, (512, 512))
+def data_generator():
+    data_manager = DataManager()
 
-        label = cv2.imread(PATH_TO_LABELS + file, 0)
+    for img, label in data_manager.data_generator(shuffle=True):
+        img = cv2.resize(img, (512, 512))
         label = cv2.resize(label, (512, 512))
         label = cv2.normalize(label, label, 0, 1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
 
         img = img.reshape((1, 512, 512, 3))
         label = label.reshape((1, 512, 512, 1))
-
-        # imgs.append(img)
-        # labels.append(label)
-
-        # if len(imgs) == 32:
-        #     yield (imgs, labels)
-        #     imgs = []
-        #     labels = []
-        # print(img.shape)
-        # print(label.shape)
 
         yield (img, label)
 
@@ -120,15 +104,7 @@ def main():
         from keras.utils import plot_model
         plot_model(model)
 
-    nb_epoch = 100
-
-    # print(next(data_generator()))
     model.fit_generator(data_generator(), steps_per_epoch=500, epochs=100, verbose=1)
-
-    # for e in range(nb_epoch):
-    #     print("epoch %d" % e)
-    #     for img, label in data_generator():
-    #         model.fit(img, label, batch_size=32, epochs=1)
 
 
 if __name__ == "__main__":

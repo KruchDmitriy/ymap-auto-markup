@@ -1,10 +1,9 @@
 import cv2
-import numpy as np
 from matplotlib import pyplot as plt
 
 
 def main():
-    img = cv2.imread('hog_10K.png', 0)
+    img = cv2.imread('../results/hog_10K.png', 0)
 
     blur = cv2.GaussianBlur(img, (5, 5), 0)
 
@@ -16,8 +15,6 @@ def main():
     plt.axis('off')
     plt.imshow(dst)
     plt.show()
-
-    cv2.imwrite('detected_edges.png', dst)
 
 
 if __name__ == "__main__":

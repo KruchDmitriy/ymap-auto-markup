@@ -1,8 +1,8 @@
 import numpy as np
-import scipy as sp
 from matplotlib import pyplot as plt
 
-precision=1e-7
+precision = 1e-7
+
 
 def sim(left, right):
     result = 0
@@ -10,11 +10,12 @@ def sim(left, right):
         result += (float(a) - float(b)) * (float(a) - float(b)) / 255 / 255
     return np.exp(-result)
 
+
 if __name__ == "__main__":
     image = np.zeros(shape=(5, 5, 3), dtype="uint8")
     for i in range(image.shape[0]):
         for j in range(image.shape[1]):
-            image[i][j] = [0,0,0] if i <= j else [255, 255, 255]
+            image[i][j] = [0, 0, 0] if i <= j else [255, 255, 255]
 
     plt.imshow(image)
     plt.show()
@@ -40,7 +41,7 @@ if __name__ == "__main__":
             if j < width - 1:
                 s = sim(image[i][j], image[i][j + 1])
                 total += s
-                affinity[i * width + j][i* width + j + 1] = -s
+                affinity[i * width + j][i * width + j + 1] = -s
             affinity[i * width + j][i * width + j] = total
 
     print(affinity)
@@ -60,7 +61,7 @@ if __name__ == "__main__":
             val = 0
             for z in range(sigma.shape[0]):
                 if np.abs(sigma[z]) > precision:
-                    val += 1/np.sqrt(sigma[z]) * q[i * width + j][z]
+                    val += 1 / np.sqrt(sigma[z]) * q[i * width + j][z]
             image[i][j] = [val * 255, val * 255, val * 255]
     plt.imshow(image, interpolation="none")
     plt.show()
