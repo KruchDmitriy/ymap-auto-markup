@@ -44,8 +44,7 @@ function init() {
             contentType: 'application/json',
             success: function (response) {
                 console.log(response);
-                polygons.add(new ymaps.Polygon(response['geometry'], {}, {}));
-                map.geoObjects.add(polygons[0]);
+                map.geoObjects.add(new ymaps.Polygon(response['geometry'], {}, {}));
                 map.setBounds(map.geoObjects.getBounds());
             },
             error: function (xhr) {
