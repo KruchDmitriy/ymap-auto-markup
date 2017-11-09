@@ -3,6 +3,7 @@
 import cgi
 import html
 from storage import Storage
+from load_map_html import load_map_html
 
 
 storage = Storage()
@@ -36,6 +37,4 @@ else:
     print("Set-cookie: session={}".format(cookie))
 
     print("Content-type: text/html\n")
-    with open("map.html", "r") as f:
-        for line in f.readlines():
-            print(line)
+    print(load_map_html("script.js"))

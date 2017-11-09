@@ -57,9 +57,6 @@ function init() {
 
     function removePolygons() {
         map.geoObjects.removeAll();
-        // for (var i = 0; i < polygons.length; i++) {
-        //     map.geoObjects.
-        // }
     }
 
     function loadMarkup() {
@@ -95,7 +92,6 @@ function init() {
                                 onYesButton: function(e) {
                                     var id = $("#input_object_id").get(0).value;
                                     polygons[id].options.set('fillColor', badColor);
-                                    // polygons[id].options.set('strokeColor', badColor);
                                     objects[id].isBad = true;
                                     saveMarkup();
                                 },
@@ -103,7 +99,6 @@ function init() {
                                 onNoButton: function(e) {
                                     var id = $("#input_object_id").get(0).value;
                                     polygons[id].options.set('fillColor', goodColor);
-                                    // polygons[id].options.set('strokeColor', goodColor);
                                     objects[id].isBad = false;
                                     saveMarkup();
                                 }
