@@ -1,5 +1,6 @@
 ymaps.ready(init);
 var map, objects, polygons = [];
+var checkedPolygonIdx = undefined;
 
 const defaultColor = '#ffff00';
 const goodColor = '#0000ff';
@@ -15,9 +16,18 @@ function init() {
             controls: ['zoomControl']
         });
 
-        var loadButton = new ymaps.control.Button({
+        const loadButton = new ymaps.control.Button({
             data: {
                 content: "Следующее задание"
+            },
+            options: {
+                maxWidth: 250
+            }
+        });
+
+        const centerButton = new ymaps.control.Button({
+            data: {
+                content: "Переместиться к разметке"
             },
             options: {
                 maxWidth: 250
@@ -29,18 +39,32 @@ function init() {
             float: 'right'
         });
 
-        loadButton.events.add('click', onTaskClick);
+        map.controls.add(centerButton, {
+           float: 'right'
+        });
+
+        loadButton.events.add('click', function(event) {
+            nextTask();
+            event.originalEvent.target.state.set('selected', true);
+            event.stopPropagation();
+        });
+        centerButton.events.add('click', function(event) {
+            centerMapView();
+
+            event.originalEvent.target.state.set('selected', true);
+            event.stopPropagation();
+        });
         loadMarkup();
     }, function(err) {
         console.error(err.message);
     });
 
     function allChecked() {
-        if (objects == undefined)
+        if (objects === undefined)
             return false;
 
         for (var i = 0; i < objects.length; i++) {
-            if (objects[i].isBad == undefined) {
+            if (objects[i].isBad === undefined) {
                 return false;
             }
         }
@@ -48,21 +72,20 @@ function init() {
         return true;
     }
 
-    function getCurrentFileName() {
-        return "task" + String(fileCounter) + markupFileExt;
-    }
-
     function removePolygons() {
         map.geoObjects.removeAll();
+    }
+
+    function centerMapView() {
+        map.setBounds(map.geoObjects.getBounds());
     }
 
     function loadMarkup() {
         removePolygons();
 
-        $.post('/map/get_data', {})
-        .done(function(data) {
-            if (data == null) {
-                $(location).attr('href', '/finish')
+        $.post('/map/get_data', {}).done(function(data) {
+            if (data === null) {
+                $(location).attr('href', '/finish');
                 return;
             }
 
@@ -91,28 +114,24 @@ function init() {
                                     this.constructor.superclass.clear.call(this);
                                 },
 
-                                onYesButton: function(e) {
-                                    var id = $("#input_object_id").get(0).value;
-                                    polygons[id].options.set('fillColor', badColor);
-                                    objects[id].isBad = true;
-                                    saveMarkup();
+                                onYesButton: function() {
+                                    checkedPolygonIdx = $("#input_object_id").get(0).value;
+                                    markPolygonAsGood(checkedPolygonIdx);
                                 },
 
-                                onNoButton: function(e) {
-                                    var id = $("#input_object_id").get(0).value;
-                                    polygons[id].options.set('fillColor', goodColor);
-                                    objects[id].isBad = false;
-                                    saveMarkup();
+                                onNoButton: function() {
+                                    checkedPolygonIdx = $("#input_object_id").get(0).value;
+                                    markPolygonAsBad(checkedPolygonIdx);
                                 }
                             }
                         )
                 });
                 map.geoObjects.add(polygons[i]);
             }
-            map.setBounds(map.geoObjects.getBounds());
+            centerMapView();
         });
     }
-
+    
     function saveMarkup() {
         $.ajax({
             type: "POST",
@@ -125,14 +144,105 @@ function init() {
         });
     }
 
-    function onTaskClick(event) {
+    function nextTask() {
         if (!allChecked()) {
             alert("Проверьте, пожалуйста, всю разметку. Отмечайте, также и хорошую разметку (она должна загореться синим цветом).");
         } else {
             loadMarkup();
         }
-
-        event.originalEvent.target.state.set('selected', true);
-        event.stopPropagation();
     }
+
+    function markPolygonAsGood(id) {
+        polygons[id].options.set('fillColor', badColor);
+        objects[id].isBad = true;
+        polygons[id].balloon.close();
+        saveMarkup();
+    }
+
+    function markPolygonAsBad(id) {
+        polygons[id].options.set('fillColor', goodColor);
+        objects[id].isBad = false;
+        polygons[id].balloon.close();
+        saveMarkup();
+    }
+
+    function nextPolygon() {
+        if (checkedPolygonIdx === undefined) {
+            checkedPolygonIdx = 0;
+        } else {
+            polygons[checkedPolygonIdx].balloon.close();
+            checkedPolygonIdx = (checkedPolygonIdx + 1) % polygons.length;
+        }
+
+        polygons[checkedPolygonIdx].balloon.open();
+    }
+
+    function prevPolygon() {
+        if (checkedPolygonIdx === undefined) {
+            checkedPolygonIdx = polygons.length - 1;
+        } else {
+            polygons[checkedPolygonIdx].balloon.close();
+            checkedPolygonIdx = (checkedPolygonIdx + polygons.length - 1) % polygons.length;
+        }
+
+        polygons[checkedPolygonIdx].balloon.open();
+    }
+
+    const KEY_CODES = {
+        "ENTER": 13,
+        "LEFT_ARROW": 37,
+        "UP_ARROW": 38,
+        "RIGHT_ARROW": 39,
+        "DOWN_ARROW": 40,
+        "Y": 89,
+        "N": 78,
+        "ESCAPE": 27,
+        "ZOOM_IN": 187,
+        "ZOOM_OUT": 189
+    };
+
+    window.addEventListener('keydown', function(event) {
+        switch (event.keyCode) {
+            case KEY_CODES["LEFT_ARROW"]:
+                nextPolygon();
+                break;
+            case KEY_CODES["RIGHT_ARROW"]:
+                prevPolygon();
+                break;
+            case KEY_CODES["UP_ARROW"]: case KEY_CODES["Y"]:
+                if (checkedPolygonIdx === undefined)
+                    break;
+
+                markPolygonAsGood(checkedPolygonIdx);
+                break;
+            case KEY_CODES["DOWN_ARROW"]: case KEY_CODES["N"]:
+                if (checkedPolygonIdx === undefined)
+                    break;
+
+                markPolygonAsBad(checkedPolygonIdx);
+                break;
+            case KEY_CODES["ESCAPE"]:
+                polygons[checkedPolygonIdx].balloon.close();
+                checkedPolygonIdx = undefined;
+                break;
+            case KEY_CODES["ENTER"]:
+                nextTask();
+                break;
+            case KEY_CODES["ZOOM_IN"]:
+                if (event.ctrlKey) {
+                    map.setZoom(map.getZoom() + 1);
+                }
+                break;
+            case KEY_CODES["ZOOM_OUT"]:
+                if (event.ctrlKey) {
+                    map.setZoom(map.getZoom() - 1);
+                }
+                break;
+            default:
+                return;
+        }
+
+        event.stopPropagation();
+        event.preventDefault();
+    });
 }

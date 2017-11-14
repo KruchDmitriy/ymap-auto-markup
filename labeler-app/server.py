@@ -10,6 +10,7 @@ from user_tasks import TaskManager
 
 
 app = Flask(__name__)
+app.debug = True
 
 users = UserStorage()
 data = DataStorage()
