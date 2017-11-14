@@ -12,7 +12,7 @@ endif()
 
 
 
-add_executable(${project_name} ${SOURCES})
+add_executable(${project_name} ${SOURCES} edges.h edges.cpp)
 
 find_package(OpenCV REQUIRED)
 target_link_libraries(${project_name} ${OpenCV_LIBS})

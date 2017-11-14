@@ -1,26 +1,28 @@
 from flask import *
+from flask_login import *
 from os import urandom
-from wtforms import Form, StringField, TextAreaField, PasswordField, validators
-from passlib.hash import sha256_crypt
-from functools import wraps
+from wtforms import Form, StringField, PasswordField, validators
 
 from user_storage import UserStorage
-from data_storage import DataStorage, MarkupStorage
-from user_tasks import TaskManager
+from data_storage import DataStorage, TaskManager
 
 
 app = Flask(__name__)
 app.debug = True
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 users = UserStorage()
 data = DataStorage()
-markup = MarkupStorage()
-taskManager = TaskManager()
+task_manager = TaskManager()
 
 
 @app.route('/')
 def index():
+    if not current_user.is_anonymous:
+        return redirect(url_for('map'))
     return render_template('home.html')
+
 
 class RegisterForm(Form):
     username = StringField('Username', [validators.Length(min=4, max=25)])
@@ -36,29 +38,26 @@ def register():
     form = RegisterForm(request.form)
     if request.method == 'POST' and form.validate():
         username = form.username.data
-        password = sha256_crypt.encrypt(str(form.password.data))
+        password = str(form.password.data)
 
         if not users.register(username, password):
             flash('User with this "username" already registered', 'danger')
             return render_template('register.html', form=form)
-
+        login_user(users.find(username))
         flash('You are now registered and can log in', 'success')
-        return redirect(url_for('login'))
+        return redirect(url_for('map'))
     return render_template('register.html', form=form)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
         password_candidate = request.form['password']
-
-        if users.find(username):
-            password = users.get_password(username)
-
-            if sha256_crypt.verify(password_candidate, password):
-                session['logged_in'] = True
-                session['username'] = username
-
+        user = users.find(username)
+        if not user.is_anonymous:
+            if user.check_password(password_candidate):
+                login_user(user, remember=True)
                 return redirect(url_for('map'))
             else:
                 error = 'Invalid password'
@@ -69,42 +68,50 @@ def login():
 
     return render_template('login.html')
 
-def is_logged_in(f):
-    @wraps(f)
-    def wrap(*args, **kwargs):
-        if 'logged_in' in session:
-            return f(*args, **kwargs)
-        else:
-            flash('Unauthorized, Please login', 'danger')
-            return redirect(url_for('login'))
-    return wrap
+
+@login_manager.user_loader
+def load_user(id):
+    return users.find(id)
+
 
 @app.route('/map/get_data', methods=['GET', 'POST'])
-@is_logged_in
+@login_required
 def get_data():
-    next_task = taskManager.next_task(session['username'])
-    return jsonify(next_task)
+    user = current_user.get_id()
+    if not current_user.get_task():
+        current_user.set_task(task_manager.next_task(user))
+    return jsonify(task_manager.task_by_id(current_user.get_task(), user))
+
 
 @app.route('/map/save_data', methods=['GET', 'POST'])
-@is_logged_in
+@login_required
 def save_data():
-    data = request.get_json()["data"]
-    for obj in data:
-        markup.append_json(session['username'], obj)
-    markup.dump(session['username'])
+    payload = request.get_json()
+
+    if 'id' in payload:
+        task_manager.append_result(current_user.get_id(), current_user.get_task(), payload)
+    if 'complete' in payload:
+        current_user.set_task(task_manager.next_task(current_user.get_id()))
     return ''
 
+
 @app.route('/map')
-@is_logged_in
+@login_required
 def map():
     return render_template('map.html')
 
+
 @app.route('/logout')
-@is_logged_in
+@login_required
 def logout():
-    session.clear()
-    flash('You are now logged out', 'success')
+    logout_user()
     return redirect(url_for('login'))
+
+
+@login_manager.unauthorized_handler
+def handle_unauthorized():
+    return redirect(url_for('login'))
+
 
 @app.route('/finish', methods=['GET', 'POST'])
 def finish():

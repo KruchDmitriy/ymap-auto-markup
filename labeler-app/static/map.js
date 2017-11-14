@@ -88,17 +88,18 @@ function init() {
                 $(location).attr('href', '/finish');
                 return;
             }
-
-            objects = JSON.parse(data);
+            objects = data.task
+            index = {}
 
             for (var i = 0; i < objects.length; i++) {
+                index[objects[i].id] = i
                 polygons[i] = new ymaps.Polygon([objects[i].coords[0]], {}, {
                     fillColor: defaultColor,
                     strokeColor: "#000000",
                     strokeWidth: 2,
                     fillOpacity: 0.5,
                     balloonContentLayout: ymaps.templateLayoutFactory.createClass(
-                            '<h3 id="layout-element">Плохая разметка?</h3>' +
+                            '<h3 id="layout-element">Верна ли разметка?</h3>' +
                             '<button id="btn-yes">Да</button>' +
                             '<button id="btn-no">Нет</button>' +
                             '<input type="hidden" id="input_object_id" value="' + i + '"/>', {
@@ -106,6 +107,7 @@ function init() {
                                     this.constructor.superclass.build.call(this);
                                     $('#btn-yes').bind('click', this.onYesButton);
                                     $('#btn-no').bind('click', this.onNoButton);
+
                                 },
 
                                 clear: function() {
@@ -128,17 +130,25 @@ function init() {
                 });
                 map.geoObjects.add(polygons[i]);
             }
+
+            for (i in data.results) {
+                var id = data.results[i].id
+                objects[index[id]].isBad = data.results[i].isBad
+                polygons[index[id]].options.set('fillColor', data.results[i].isBad ? badColor : goodColor);
+            }
+
             centerMapView();
         });
     }
-    
-    function saveMarkup() {
+
+    function saveMarkup(id) {
         $.ajax({
             type: "POST",
             url: "/map/save_data",
             contentType: "application/json;charset=UTF-8",
             data: JSON.stringify({
-                data: objects
+                id: objects[id].id,
+                isBad: objects[id].isBad
             }),
             dataType: "json"
         });
@@ -148,22 +158,31 @@ function init() {
         if (!allChecked()) {
             alert("Проверьте, пожалуйста, всю разметку. Отмечайте, также и хорошую разметку (она должна загореться синим цветом).");
         } else {
+            $.ajax({
+                type: "POST",
+                url: "/map/save_data",
+                contentType: "application/json;charset=UTF-8",
+                data: JSON.stringify({
+                    complete: "da"
+                }),
+                dataType: "json"
+            });
             loadMarkup();
         }
     }
 
     function markPolygonAsGood(id) {
-        polygons[id].options.set('fillColor', badColor);
-        objects[id].isBad = true;
-        polygons[id].balloon.close();
-        saveMarkup();
-    }
-
-    function markPolygonAsBad(id) {
         polygons[id].options.set('fillColor', goodColor);
         objects[id].isBad = false;
         polygons[id].balloon.close();
-        saveMarkup();
+        saveMarkup(id);
+    }
+
+    function markPolygonAsBad(id) {
+        polygons[id].options.set('fillColor', badColor);
+        objects[id].isBad = true;
+        polygons[id].balloon.close();
+        saveMarkup(id);
     }
 
     function nextPolygon() {

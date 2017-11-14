@@ -1,5 +1,5 @@
 from os import makedirs, listdir
-from os.path import exists
+from os.path import exists, abspath
 
 
 class TaskManager:
@@ -17,6 +17,12 @@ class TaskManager:
             with open(self.MARKUP_TASKS + filename, 'r') as file:
                 self.tasks[filename] = file.read()
                 self.num_tasks += 1
+        if len(self.tasks) == 0:
+            print(["No tasks found in the", abspath(self.MARKUP_TASKS), "directory!"])
+            exit(-1)
+
+    def start_user(self, user):
+        return
 
     def next_task(self, user):
         if user not in self.user_counter.keys():
