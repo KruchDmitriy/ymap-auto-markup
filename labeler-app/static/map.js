@@ -1,8 +1,5 @@
 ymaps.ready(init);
 var map, objects, polygons = [];
-const markupDir = '/data/marked_out/';
-const markupFileExt = '.json';
-var fileCounter = -1;
 
 const defaultColor = '#ffff00';
 const goodColor = '#0000ff';
@@ -43,7 +40,7 @@ function init() {
             return false;
 
         for (var i = 0; i < objects.length; i++) {
-            if (objects[i].isBad === "undefined") {
+            if (objects[i].isBad == undefined) {
                 return false;
             }
         }
@@ -62,12 +59,17 @@ function init() {
     function loadMarkup() {
         removePolygons();
 
-        fileCounter++;
-        $.getJSON(markupDir + getCurrentFileName(), function(data) {
-            objects = data;
+        $.post('/map/get_data', {})
+        .done(function(data) {
+            if (data == null) {
+                $(location).attr('href', '/finish')
+                return;
+            }
+
+            objects = JSON.parse(data);
 
             for (var i = 0; i < objects.length; i++) {
-                polygons[i] = new ymaps.Polygon([objects[i].coords], {}, {
+                polygons[i] = new ymaps.Polygon([objects[i].coords[0]], {}, {
                     fillColor: defaultColor,
                     strokeColor: "#000000",
                     strokeWidth: 2,
@@ -107,23 +109,19 @@ function init() {
                 });
                 map.geoObjects.add(polygons[i]);
             }
-
             map.setBounds(map.geoObjects.getBounds());
-        }).fail(function(err) {
-            console.error("Error while loading markup");
         });
     }
 
     function saveMarkup() {
         $.ajax({
             type: "POST",
-            url: "/cgi-bin/save.py",
-            contentType: 'application/json',
+            url: "/map/save_data",
+            contentType: "application/json;charset=UTF-8",
             data: JSON.stringify({
-                filename: getCurrentFileName(),
                 data: objects
             }),
-            dataType: 'json'
+            dataType: "json"
         });
     }
 
