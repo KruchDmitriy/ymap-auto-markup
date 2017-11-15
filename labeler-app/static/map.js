@@ -48,19 +48,6 @@ function init() {
         console.error(err.message);
     });
 
-    function allChecked() {
-        if (objects === undefined)
-            return false;
-
-        for (var i = 0; i < objects.length; i++) {
-            if (objects[i].isBad === undefined) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     const KEY_CODES = {
         "ENTER": 13,
         "LEFT_ARROW": 37,
@@ -95,7 +82,7 @@ function init() {
                 mark(true, false);
                 break;
             case KEY_CODES["ESCAPE"]:
-                deselect()
+                deselect();
                 checkedPolygonIdx = undefined;
                 break;
             case KEY_CODES["ENTER"]:
@@ -120,76 +107,89 @@ function init() {
     });
 }
 
-var current = null
+function allChecked() {
+        if (objects === undefined)
+            return false;
+
+        for (var i = 0; i < objects.length; i++) {
+            if (objects[i].isBad === undefined) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+var current = null;
 
 function select(c) {
-    if (current != null) {
+    if (current !== null) {
         deselect()
     }
-    $('#dialog').show()
+    $('#dialog').show();
     polygons[c].options.set('fillColor', selectedColor);
     current = c
 }
 
 function deselect() {
-    $('#dialog').hide()
-    if (current != null) {
-        if (objects[current].isBad != null) {
+    $('#dialog').hide();
+    if (current !== null) {
+        if (objects[current].isBad !== null) {
             polygons[current].options.set('fillColor', objects[current].isBad ? badColor : goodColor);
         }
         else {
             polygons[current].options.set('fillColor', defaultColor);
         }
-        current = null
+        current = null;
     }
 }
 
 function nextPolygon() {
-    var next
+    var next;
     if (current === undefined) {
         next = 0;
     } else {
         next = (current + 1) % polygons.length;
     }
 
-    deselect()
-    select(next)
+    deselect();
+    select(next);
     map.setBounds(polygons[current].geometry.getBounds());
     map.setZoom(19);
 }
 
 function prevPolygon() {
-    var next
+    var next;
     if (current === undefined) {
         next = polygons.length - 1;
     } else {
         next = (current + polygons.length - 1) % polygons.length;
     }
 
-    deselect()
-    select(next)
+    deselect();
+    select(next);
     map.setBounds(polygons[current].geometry.getBounds());
     map.setZoom(19);
 }
 
 function mark(isBad, de=true) {
-    if (current == null) {
+    if (current === null) {
         return;
     }
     polygons[current].options.set('fillColor', isBad ? badColor : goodColor);
     objects[current].isBad = isBad;
     saveMarkup(current);
     if (de) {
-        deselect()
+        deselect();
     }
 }
 
 $(document).ready(function(){
     $("#yes").click(function(){
-        mark(false)
+        mark(false);
     });
     $("#no").click(function(){
-        mark(true)
+        mark(true);
     });
 });
 
@@ -261,12 +261,12 @@ function loadMarkup() {
                 fillColor: defaultColor,
                 strokeColor: "#000000",
                 strokeWidth: 2,
-                fillOpacity: 0.5,
+                fillOpacity: 0.5
             });
-            polygons[i].idx = i
+            polygons[i].idx = i;
             polygons[i].events.add('click', function(e) {
                 select(e.get('target').idx)
-            })
+            });
 
             map.geoObjects.add(polygons[i]);
         }
