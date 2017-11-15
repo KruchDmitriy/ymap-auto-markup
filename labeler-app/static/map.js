@@ -1,5 +1,7 @@
 ymaps.ready(init);
+
 var map, objects, polygons = [];
+var marker = undefined;
 var checkedPolygonIdx = undefined;
 
 const defaultColor = '#ffff00';
@@ -54,6 +56,20 @@ function init() {
             event.originalEvent.target.state.set('selected', true);
             event.stopPropagation();
         });
+
+        map.events.add('boundschange', function (e) {
+            if (e.get('newZoom') != e.get('oldZoom')) {
+                if (marker != null) {
+                    if (e.get('newZoom') > 14) {
+                        map.geoObjects.remove(marker)
+                    }
+                    else {
+                        map.geoObjects.add(marker)
+                    }
+                }
+            }
+        });
+
         loadMarkup();
     }, function(err) {
         console.error(err.message);
@@ -92,6 +108,12 @@ function init() {
             index = {};
 
             for (var i = 0; i < objects.length; i++) {
+                if (i == 0) {
+                    marker = new ymaps.Placemark(objects[i].coords[0][0], {
+                         iconCaption: "Разметка"
+                    })
+                }
+
                 index[objects[i].id] = i;
                 polygons[i] = new ymaps.Polygon([objects[i].coords[0]], {}, {
                     fillColor: defaultColor,
