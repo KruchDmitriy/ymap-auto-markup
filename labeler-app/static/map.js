@@ -109,6 +109,7 @@ function init() {
                     strokeColor: "#000000",
                     strokeWidth: 2,
                     fillOpacity: 0.5,
+//                    balloonOffset: [0, -20],
                     balloonContentLayout: ymaps.templateLayoutFactory.createClass(
                             '<h6>Верна ли разметка?</h6>' +
                             '<div style="text-align: center">' +
@@ -143,7 +144,7 @@ function init() {
                                 onNoButton: function() {
                                     markPolygon(checkedPolygonIdx, true);
                                 }
-                            }
+                            },
                         )
                 });
 
@@ -197,7 +198,7 @@ function init() {
         saveMarkup(id);
     }
 
-    function nextPolygon() {
+    function prevPolygon() {
         if (checkedPolygonIdx === undefined) {
             checkedPolygonIdx = 0;
         } else {
@@ -205,11 +206,13 @@ function init() {
             checkedPolygonIdx = (checkedPolygonIdx + 1) % polygons.length;
         }
 
+        map.setBounds(polygons[checkedPolygonIdx].geometry.getBounds());
+        map.setZoom(19);
         polygons[checkedPolygonIdx].balloon.open();
         currentPolygon = polygons[checkedPolygonIdx];
     }
 
-    function prevPolygon() {
+    function nextPolygon() {
         if (checkedPolygonIdx === undefined) {
             checkedPolygonIdx = polygons.length - 1;
         } else {
@@ -217,6 +220,8 @@ function init() {
             checkedPolygonIdx = (checkedPolygonIdx + polygons.length - 1) % polygons.length;
         }
 
+        map.setBounds(polygons[checkedPolygonIdx].geometry.getBounds());
+        map.setZoom(19);
         polygons[checkedPolygonIdx].balloon.open();
         currentPolygon = polygons[checkedPolygonIdx];
     }
