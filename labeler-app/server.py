@@ -4,7 +4,7 @@ from os import urandom
 from wtforms import Form, StringField, PasswordField, validators
 
 from user_storage import UserStorage
-from data_storage import DataStorage, TaskManager
+from data_storage import TaskManager
 
 
 app = Flask(__name__)
@@ -13,7 +13,6 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 
 users = UserStorage()
-data = DataStorage()
 task_manager = TaskManager()
 
 
