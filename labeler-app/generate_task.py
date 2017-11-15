@@ -1,3 +1,4 @@
+import sys
 import fiona
 from os import makedirs
 from os.path import exists
@@ -26,38 +27,18 @@ class Building:
         return bld_json
 
 
-class DataStorage:
-    def __init__(self):
-        self.MODIFIED_COLLECTION_PATH = "./data/collections/"
-        if not exists(self.MODIFIED_COLLECTION_PATH):
-            makedirs(self.MODIFIED_COLLECTION_PATH)
-
-        self.collection = list(map(lambda item: Building(item),
-            fiona.collection("data/yandex/bld_sample.shp")))
-
-    def __getitem__(self, key):
-        return self.collection[key]
-
-    def apply_func(self, function):
-        self.collection = list(map(function, self.collection))
-
-    def save(self, name):
-        with open(self.MODIFIED_COLLECTION_PATH + name, 'w') as file:
-            json.dump(map(lambda bld: bld.to_json, self.collection), file)
-
-
-
 if __name__ == '__main__':
-    dataStorage = DataStorage()
-    directory = './data/markup_tasks/'
+    collection = list(map(lambda item: Building(item),
+             fiona.collection(sys.argv[1])))
+    directory = sys.argv[2]
     if not exists(directory):
         makedirs(directory)
 
     for i in range(0, 200, 20):
-        with open(directory + 'task' + str(i) + '.json', 'w') as f:
+        with open(directory + '/task' + str(i) + '.json', 'w') as f:
             f.write('[\n')
 
-            sorted_storage = sorted(dataStorage.collection, key=lambda k: [k.coordinates[0][0][0], k.coordinates[0][0][1]])
+            sorted_storage = sorted(collection, key=lambda k: [k.coordinates[0][0][0], k.coordinates[0][0][1]])
 
             for i, bld in enumerate(sorted_storage[i: i + 20]):
                 json.dump(bld.to_json(), f)

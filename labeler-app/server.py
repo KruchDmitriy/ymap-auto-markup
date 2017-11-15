@@ -1,20 +1,20 @@
+import sys
 from flask import *
 from flask_login import *
 from os import urandom
 from wtforms import Form, StringField, PasswordField, validators
+from optparse import OptionParser
 
 from user_storage import UserStorage
 from data_storage import TaskManager
 
 
 app = Flask(__name__)
-app.debug = True
 login_manager = LoginManager()
 login_manager.init_app(app)
 
 users = UserStorage()
 task_manager = TaskManager()
-
 
 @app.route('/')
 def index():
@@ -117,6 +117,15 @@ def finish():
     return render_template('finish.html')
 
 
+def enable_debug():
+    app.debug = True
+
+parser = OptionParser()
+parser.add_option("-d", "--debug",
+                  action="callback", default=False, help="Enable flask server debugging",
+                  callback=enable_debug)
+
 if __name__ == "__main__":
+    (options, args) = parser.parse_args(sys.argv)
     app.secret_key = urandom(25)
     app.run()
