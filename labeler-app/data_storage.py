@@ -88,6 +88,8 @@ class TaskManager:
             state = list(filter(lambda r: r['task'] == task and r['user'] == user, self.results))
             return {
                 'task': deepcopy(self.tasks[task]),
+                'available': len(list(filter(lambda task: len(task['occupied']) == 0, self.tasks_index))),
+                'done': len(self.users_index[user]),
                 'results': state[0]['results'] if state else []
             }
 
