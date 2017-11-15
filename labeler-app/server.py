@@ -118,8 +118,9 @@ def finish():
     return render_template('finish.html')
 
 
-def enable_debug():
+def enable_debug(*args, **kwargs):
     app.debug = True
+
 
 parser = OptionParser()
 parser.add_option("-d", "--debug",
