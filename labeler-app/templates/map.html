@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>LabelerApp</title>
+    <title>YBMV</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
     <script src="https://api-maps.yandex.ru/2.1/?loag=package.full&lang=ru_RU&coordorder=longlat" type="text/javascript"></script>
-    <script src="https://yandex.st/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
+    <script
+      src="https://code.jquery.com/jquery-2.2.4.min.js"
+      integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+      crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='map.js') }}" type="text/javascript"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
-
     <style>
       html,body {width:100%;height:100%;margin:0;padding:0;}
 
@@ -24,33 +25,44 @@
         right: 0;
         margin-top: 50px;
       }
+
+      .side-padded {
+        padding-left: 5px;
+        padding-right: 5px;
+      }
+
+      .navbar-brand
+      {
+        font-family: 'Comic Sans MS', fantasy;
+        font-size: 30px;
+      }
     </style>
   </head>
   <body>
-    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
-      <a class="navbar-brand">LabelerApp</a>
-      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+    <nav class="navbar navbar-light bg-light navbar-expand-md fixed-top">
+      <div class="container-fluid">
+      <a class="navbar-brand">{{current_user.get_id()}}</a>
 
-      <div class="collapse navbar-collapse" id="navbarsExampleDefault">
-        <ul class="navbar-nav mr-auto" style="background-color: transparent;">
-          <li class="nav-item active">
-            <a class="nav-link">Пройденных заданий<span class="sr-only">(current)</span></a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link">Всего доступных</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link">Следующее задание</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link">Переместиться к разметке</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link">Выйти</a>
-          </li>
-        </ul>
+      <ul class="navbar-nav mr-auto" style="margin-left: 20px; background-color: transparent;">
+        <li class="nav-item disabled">
+          <a class="nav-link">Пройденных заданий: <span id="num_finished">0</span></a>
+        </li>
+        <li class="nav-item disabled">
+          <a class="nav-link">Всего доступных: <span id="num_all">0</span></a>
+        </li>
+      </ul>
+
+      <ul class="navbar-nav navbar-right">
+        <li class="nav-item side-padded">
+          <button id="go-to-markup" class="btn align-middle" type="button">К разметке</button>
+        </li>
+        <li class="nav-item side-padded">
+          <button id="next-task-button" class="btn align-middle" type="button">Следующее задание</button>
+        </li>
+        <li class="nav-item side-padded active">
+          <a class="nav-link" href="/logout">Выйти</a>
+        </li>
+      </ul>
       </div>
     </nav>
     <div id="map"></div>

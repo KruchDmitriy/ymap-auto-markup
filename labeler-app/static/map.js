@@ -18,48 +18,21 @@ function init() {
             controls: ['zoomControl']
         });
 
-        const loadButton = new ymaps.control.Button({
-            data: {
-                content: "Следующее задание"
-            },
-            options: {
-                maxWidth: 250
-            }
-        });
-
-        const centerButton = new ymaps.control.Button({
-            data: {
-                content: "Переместиться к разметке"
-            },
-            options: {
-                maxWidth: 250
-            }
-        });
-
         map.container.fitToViewport();
-        map.controls.add(loadButton, {
-            float: 'right'
-        });
 
-        map.controls.add(centerButton, {
-           float: 'right'
-        });
-
-        loadButton.events.add('click', function(event) {
+        $("#next-task-button").click(function(event) {
             nextTask();
-            event.originalEvent.target.state.set('selected', true);
             event.stopPropagation();
         });
-        centerButton.events.add('click', function(event) {
-            centerMapView();
 
-            event.originalEvent.target.state.set('selected', true);
+        $("#go-to-markup").click(function(event) {
+            centerMapView();
             event.stopPropagation();
         });
 
         map.events.add('boundschange', function (e) {
-            if (e.get('newZoom') != e.get('oldZoom')) {
-                if (marker != null) {
+            if (e.get('newZoom') !== e.get('oldZoom')) {
+                if (marker !== null) {
                     if (e.get('newZoom') > 14) {
                         map.geoObjects.remove(marker)
                     }
@@ -96,6 +69,12 @@ function init() {
         map.setBounds(map.geoObjects.getBounds());
     }
 
+    function removeChildren(element) {
+        while (element.firstChild) {
+            element.removeChild(element.firstChild);
+        }
+    }
+
     function loadMarkup() {
         removePolygons();
 
@@ -105,10 +84,18 @@ function init() {
                 return;
             }
             objects = data.task;
+
+            const num_all = $("#num_all")[0];
+            const num_finished = $("#num_finished")[0];
+            removeChildren(num_all);
+            removeChildren(num_finished);
+
+            num_all.appendChild(document.createTextNode(data.available));
+            num_finished.appendChild(document.createTextNode(data.done));
             index = {};
 
             for (var i = 0; i < objects.length; i++) {
-                if (i == 0) {
+                if (i === 0) {
                     marker = new ymaps.Placemark(objects[i].coords[0][0], {
                          iconCaption: "Разметка"
                     })
@@ -140,12 +127,12 @@ function init() {
 
                                 onYesButton: function() {
                                     checkedPolygonIdx = $("#input_object_id").get(0).value;
-                                    markPolygonAsGood(checkedPolygonIdx);
+                                    markPolygon(checkedPolygonIdx, false);
                                 },
 
                                 onNoButton: function() {
                                     checkedPolygonIdx = $("#input_object_id").get(0).value;
-                                    markPolygonAsBad(checkedPolygonIdx);
+                                    markPolygon(checkedPolygonIdx, true);
                                 }
                             }
                         )
@@ -193,16 +180,9 @@ function init() {
         }
     }
 
-    function markPolygonAsGood(id) {
-        polygons[id].options.set('fillColor', goodColor);
-        objects[id].isBad = false;
-        polygons[id].balloon.close();
-        saveMarkup(id);
-    }
-
-    function markPolygonAsBad(id) {
-        polygons[id].options.set('fillColor', badColor);
-        objects[id].isBad = true;
+    function markPolygon(id, isBad) {
+        polygons[id].options.set('fillColor', isBad ? badColor : goodColor);
+        objects[id].isBad = isBad;
         polygons[id].balloon.close();
         saveMarkup(id);
     }
@@ -254,13 +234,13 @@ function init() {
                 if (checkedPolygonIdx === undefined)
                     break;
 
-                markPolygonAsGood(checkedPolygonIdx);
+                markPolygon(checkedPolygonIdx, false);
                 break;
             case KEY_CODES["DOWN_ARROW"]: case KEY_CODES["N"]:
                 if (checkedPolygonIdx === undefined)
                     break;
 
-                markPolygonAsBad(checkedPolygonIdx);
+                markPolygon(checkedPolygonIdx, true);
                 break;
             case KEY_CODES["ESCAPE"]:
                 polygons[checkedPolygonIdx].balloon.close();

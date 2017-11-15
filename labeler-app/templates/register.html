@@ -5,7 +5,7 @@
       <br />
       <div class="panel panel-default">
         <div class="panel-heading">
-          <h1>Register</h1>
+          <h1>Регистрация</h1>
         </div>
         <div class="panel-body">
           <form action="" method="POST">
@@ -14,7 +14,7 @@
                 <span class="input-group-addon">
                     <i class="glyphicon glyphicon-user" style="width: auto"></i>
                 </span>
-                <input type="text" class="form-control" name="username" value="{{request.form.username}}" placeholder="Enter username" required=""/>
+                <input type="text" class="form-control" name="username" value="{{request.form.username}}" placeholder="Логин" required=""/>
               </div>
               {% if form.username.errors %}
                 <ul class="errors">{% for error in form.username.errors %}<li>{{ error }}</li>{% endfor %}</ul>
@@ -25,7 +25,7 @@
                 <span class="input-group-addon">
                     <i class="glyphicon glyphicon-lock" style="width: auto"></i>
                 </span>
-                <input id="password" type="password" class="form-control" name="password" value="{{request.form.password}}" placeholder="Enter password" required=""/>
+                <input id="password" type="password" class="form-control" name="password" value="{{request.form.password}}" placeholder="Придумайте пароль" required=""/>
               </div>
               {% if form.password.errors %}
                 <ul class="errors">{% for error in form.password.errors %}<li>{{ error }}</li>{% endfor %}</ul>
@@ -36,15 +36,16 @@
                 <span class="input-group-addon">
                     <i class="glyphicon glyphicon-lock" style="width: auto"></i>
                 </span>
-                <input id="confirm" type="password" class="form-control" name="confirm" value="{{request.form.confirm}}" placeholder="Confirm password" required=""/>
+                <input id="confirm" type="password" class="form-control" name="confirm" value="{{request.form.confirm}}" placeholder="Повторите пароль" required=""/>
               </div>
               {% if form.confirm.errors %}
                 <ul class="errors">{% for error in form.confirm.errors %}<li>{{ error }}</li>{% endfor %}</ul>
               {% endif %}
             </div>
-            <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups">
-             <button type="submit" class="btn btn-primary btn-md">Submit</button>
-             <button type="button" class="btn btn-primary btn-md btn-info" onclick="window.location.href='/login'">Login</button>
+            <div style="text-align:center">
+              <button type="submit" class="btn align-center btn-primary btn-md" style="margin: 6px">Зарегистрироваться</button>
+              <br />
+              Уже есть аккаунт? <a href="login.html">Войти</a>
             </div>
           </form>
         </div>
