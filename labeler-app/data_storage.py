@@ -6,6 +6,7 @@ from copy import deepcopy
 
 import json
 
+
 class TaskManager:
     MARKUP_TASKS = "./data/markup_tasks/"
     RESULTS = './data/results.json'

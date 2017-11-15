@@ -3,6 +3,7 @@ ymaps.ready(init);
 var map, objects, polygons = [];
 var marker = undefined;
 var checkedPolygonIdx = undefined;
+var currentPolygon = undefined;
 
 const defaultColor = '#ffff00';
 const goodColor = '#0000ff';
@@ -102,21 +103,31 @@ function init() {
                 }
 
                 index[objects[i].id] = i;
+
                 polygons[i] = new ymaps.Polygon([objects[i].coords[0]], {}, {
                     fillColor: defaultColor,
                     strokeColor: "#000000",
                     strokeWidth: 2,
                     fillOpacity: 0.5,
                     balloonContentLayout: ymaps.templateLayoutFactory.createClass(
-                            '<h3 id="layout-element">Верна ли разметка?</h3>' +
-                            '<button id="btn-yes">Да</button>' +
-                            '<button id="btn-no">Нет</button>' +
+                            '<h6>Верна ли разметка?</h6>' +
+                            '<div style="text-align: center">' +
+                            '<button id="btn-yes" class="btn-success" ' +
+                                'style="margin: 5%;' +
+                                'width: 40%;">' +
+                            'Да' +
+                            '</button>' +
+                            '<button id="btn-no" class="btn-danger" ' +
+                                'style="margin: 5%;' +
+                                'width: 40%">' +
+                            'Нет' +
+                            '</button>' +
+                            '</div>' +
                             '<input type="hidden" id="input_object_id" value="' + i + '"/>', {
                                 build: function() {
                                     this.constructor.superclass.build.call(this);
                                     $('#btn-yes').bind('click', this.onYesButton);
                                     $('#btn-no').bind('click', this.onNoButton);
-
                                 },
 
                                 clear: function() {
@@ -126,17 +137,16 @@ function init() {
                                 },
 
                                 onYesButton: function() {
-                                    checkedPolygonIdx = $("#input_object_id").get(0).value;
                                     markPolygon(checkedPolygonIdx, false);
                                 },
 
                                 onNoButton: function() {
-                                    checkedPolygonIdx = $("#input_object_id").get(0).value;
                                     markPolygon(checkedPolygonIdx, true);
                                 }
                             }
                         )
                 });
+
                 map.geoObjects.add(polygons[i]);
             }
 
@@ -196,6 +206,7 @@ function init() {
         }
 
         polygons[checkedPolygonIdx].balloon.open();
+        currentPolygon = polygons[checkedPolygonIdx];
     }
 
     function prevPolygon() {
@@ -207,6 +218,7 @@ function init() {
         }
 
         polygons[checkedPolygonIdx].balloon.open();
+        currentPolygon = polygons[checkedPolygonIdx];
     }
 
     const KEY_CODES = {
@@ -243,7 +255,7 @@ function init() {
                 markPolygon(checkedPolygonIdx, true);
                 break;
             case KEY_CODES["ESCAPE"]:
-                polygons[checkedPolygonIdx].balloon.close();
+                currentPolygon.balloon.close();
                 checkedPolygonIdx = undefined;
                 break;
             case KEY_CODES["ENTER"]:
