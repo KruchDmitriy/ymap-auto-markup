@@ -24,7 +24,7 @@ class TaskManager:
             with open(self.MARKUP_TASKS + filename, 'r') as file:
                 self.tasks[filename] = json.load(file)
         if not self.tasks:
-            print(["No tasks found in the", abspath(self.MARKUP_TASKS), "directory!"])
+            print(" ".join(["No tasks found in the", abspath(self.MARKUP_TASKS), "directory!"]))
             exit(-1)
         self.tasks_index = list(map(lambda task: {
                 'task': task,

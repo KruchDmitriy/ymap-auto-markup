@@ -118,7 +118,8 @@ def finish():
     return render_template('finish.html')
 
 
-def enable_debug():
+# noinspection PyUnusedLocal
+def enable_debug(*args, **kwargs):
     app.debug = True
 
 parser = OptionParser()
@@ -127,6 +128,6 @@ parser.add_option("-d", "--debug",
                   callback=enable_debug)
 
 if __name__ == "__main__":
-    (options, args) = parser.parse_args(sys.argv)
+    (options, args) = parser.parse_args(args=sys.argv[1:])
     app.secret_key = urandom(25)
     app.run()
