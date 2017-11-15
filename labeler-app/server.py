@@ -16,6 +16,7 @@ login_manager.init_app(app)
 users = UserStorage()
 task_manager = TaskManager()
 
+
 @app.route('/')
 def index():
     if not current_user.is_anonymous:

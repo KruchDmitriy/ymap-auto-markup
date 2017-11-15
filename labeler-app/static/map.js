@@ -88,11 +88,11 @@ function init() {
                 $(location).attr('href', '/finish');
                 return;
             }
-            objects = data.task
-            index = {}
+            objects = data.task;
+            index = {};
 
             for (var i = 0; i < objects.length; i++) {
-                index[objects[i].id] = i
+                index[objects[i].id] = i;
                 polygons[i] = new ymaps.Polygon([objects[i].coords[0]], {}, {
                     fillColor: defaultColor,
                     strokeColor: "#000000",
@@ -132,8 +132,8 @@ function init() {
             }
 
             for (i in data.results) {
-                var id = data.results[i].id
-                objects[index[id]].isBad = data.results[i].isBad
+                var id = data.results[i].id;
+                objects[index[id]].isBad = data.results[i].isBad;
                 polygons[index[id]].options.set('fillColor', data.results[i].isBad ? badColor : goodColor);
             }
 
