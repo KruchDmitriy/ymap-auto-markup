@@ -144,7 +144,7 @@ function init() {
                                 onNoButton: function() {
                                     markPolygon(checkedPolygonIdx, true);
                                 }
-                            },
+                            }
                         )
                 });
 
