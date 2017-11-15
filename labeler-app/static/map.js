@@ -1,13 +1,12 @@
 ymaps.ready(init);
 
-var map, objects, polygons = [];
+var map, objects, polygons = [], index = {};
 var marker = undefined;
-var checkedPolygonIdx = undefined;
-var currentPolygon = undefined;
 
 const defaultColor = '#ffff00';
 const goodColor = '#0000ff';
 const badColor = '#ff0000';
+const selectedColor = '#ffffff';
 
 function init() {
     ymaps.geocode('Нижний Новгород', { results: 1 }).then(function (res) {
@@ -27,7 +26,7 @@ function init() {
         });
 
         $("#go-to-markup").click(function(event) {
-            centerMapView();
+            map.setBounds(map.geoObjects.getBounds());
             event.stopPropagation();
         });
 
@@ -62,170 +61,6 @@ function init() {
         return true;
     }
 
-    function removePolygons() {
-        map.geoObjects.removeAll();
-    }
-
-    function centerMapView() {
-        map.setBounds(map.geoObjects.getBounds());
-    }
-
-    function removeChildren(element) {
-        while (element.firstChild) {
-            element.removeChild(element.firstChild);
-        }
-    }
-
-    function loadMarkup() {
-        removePolygons();
-
-        $.post('/map/get_data', {}).done(function(data) {
-            if (data === null) {
-                $(location).attr('href', '/finish');
-                return;
-            }
-            objects = data.task;
-
-            const num_all = $("#num_all")[0];
-            const num_finished = $("#num_finished")[0];
-            removeChildren(num_all);
-            removeChildren(num_finished);
-
-            num_all.appendChild(document.createTextNode(data.available));
-            num_finished.appendChild(document.createTextNode(data.done));
-            index = {};
-
-            for (var i = 0; i < objects.length; i++) {
-                if (i === 0) {
-                    marker = new ymaps.Placemark(objects[i].coords[0][0], {
-                         iconCaption: "Разметка"
-                    })
-                }
-
-                index[objects[i].id] = i;
-
-                polygons[i] = new ymaps.Polygon([objects[i].coords[0]], {}, {
-                    fillColor: defaultColor,
-                    strokeColor: "#000000",
-                    strokeWidth: 2,
-                    fillOpacity: 0.5,
-//                    balloonOffset: [0, -20],
-                    balloonContentLayout: ymaps.templateLayoutFactory.createClass(
-                            '<h6>Верна ли разметка?</h6>' +
-                            '<div style="text-align: center">' +
-                            '<button id="btn-yes" class="btn-success" ' +
-                                'style="margin: 5%;' +
-                                'width: 40%;">' +
-                            'Да' +
-                            '</button>' +
-                            '<button id="btn-no" class="btn-danger" ' +
-                                'style="margin: 5%;' +
-                                'width: 40%">' +
-                            'Нет' +
-                            '</button>' +
-                            '</div>' +
-                            '<input type="hidden" id="input_object_id" value="' + i + '"/>', {
-                                build: function() {
-                                    this.constructor.superclass.build.call(this);
-                                    $('#btn-yes').bind('click', this.onYesButton);
-                                    $('#btn-no').bind('click', this.onNoButton);
-                                },
-
-                                clear: function() {
-                                    $('#btn-yes').unbind('click', this.onYesButton);
-                                    $('#btn-no').unbind('click', this.onNoButton);
-                                    this.constructor.superclass.clear.call(this);
-                                },
-
-                                onYesButton: function() {
-                                    markPolygon(checkedPolygonIdx, false);
-                                },
-
-                                onNoButton: function() {
-                                    markPolygon(checkedPolygonIdx, true);
-                                }
-                            }
-                        )
-                });
-
-                map.geoObjects.add(polygons[i]);
-            }
-
-            for (i in data.results) {
-                var id = data.results[i].id;
-                objects[index[id]].isBad = data.results[i].isBad;
-                polygons[index[id]].options.set('fillColor', data.results[i].isBad ? badColor : goodColor);
-            }
-
-            centerMapView();
-        });
-    }
-
-    function saveMarkup(id) {
-        $.ajax({
-            type: "POST",
-            url: "/map/save_data",
-            contentType: "application/json;charset=UTF-8",
-            data: JSON.stringify({
-                id: objects[id].id,
-                isBad: objects[id].isBad
-            }),
-            dataType: "json"
-        });
-    }
-
-    function nextTask() {
-        if (!allChecked()) {
-            alert("Проверьте, пожалуйста, всю разметку. Отмечайте, также и хорошую разметку (она должна загореться синим цветом).");
-        } else {
-            $.ajax({
-                type: "POST",
-                url: "/map/save_data",
-                contentType: "application/json;charset=UTF-8",
-                data: JSON.stringify({
-                    complete: "da"
-                }),
-                dataType: "json"
-            });
-            loadMarkup();
-        }
-    }
-
-    function markPolygon(id, isBad) {
-        polygons[id].options.set('fillColor', isBad ? badColor : goodColor);
-        objects[id].isBad = isBad;
-        polygons[id].balloon.close();
-        saveMarkup(id);
-    }
-
-    function prevPolygon() {
-        if (checkedPolygonIdx === undefined) {
-            checkedPolygonIdx = 0;
-        } else {
-            polygons[checkedPolygonIdx].balloon.close();
-            checkedPolygonIdx = (checkedPolygonIdx + 1) % polygons.length;
-        }
-
-        map.setBounds(polygons[checkedPolygonIdx].geometry.getBounds());
-        map.setZoom(19);
-        polygons[checkedPolygonIdx].balloon.open();
-        currentPolygon = polygons[checkedPolygonIdx];
-    }
-
-    function nextPolygon() {
-        if (checkedPolygonIdx === undefined) {
-            checkedPolygonIdx = polygons.length - 1;
-        } else {
-            polygons[checkedPolygonIdx].balloon.close();
-            checkedPolygonIdx = (checkedPolygonIdx + polygons.length - 1) % polygons.length;
-        }
-
-        map.setBounds(polygons[checkedPolygonIdx].geometry.getBounds());
-        map.setZoom(19);
-        polygons[checkedPolygonIdx].balloon.open();
-        currentPolygon = polygons[checkedPolygonIdx];
-    }
-
     const KEY_CODES = {
         "ENTER": 13,
         "LEFT_ARROW": 37,
@@ -242,25 +77,25 @@ function init() {
     window.addEventListener('keydown', function(event) {
         switch (event.keyCode) {
             case KEY_CODES["LEFT_ARROW"]:
-                nextPolygon();
-                break;
-            case KEY_CODES["RIGHT_ARROW"]:
                 prevPolygon();
                 break;
+            case KEY_CODES["RIGHT_ARROW"]:
+                nextPolygon();
+                break;
             case KEY_CODES["UP_ARROW"]: case KEY_CODES["Y"]:
-                if (checkedPolygonIdx === undefined)
+                if (current === undefined)
                     break;
 
-                markPolygon(checkedPolygonIdx, false);
+                mark(false, false);
                 break;
             case KEY_CODES["DOWN_ARROW"]: case KEY_CODES["N"]:
-                if (checkedPolygonIdx === undefined)
+                if (current === undefined)
                     break;
 
-                markPolygon(checkedPolygonIdx, true);
+                mark(true, false);
                 break;
             case KEY_CODES["ESCAPE"]:
-                currentPolygon.balloon.close();
+                deselect()
                 checkedPolygonIdx = undefined;
                 break;
             case KEY_CODES["ENTER"]:
@@ -284,3 +119,168 @@ function init() {
         event.preventDefault();
     });
 }
+
+var current = null
+
+function select(c) {
+    if (current != null) {
+        deselect()
+    }
+    $('#dialog').show()
+    polygons[c].options.set('fillColor', selectedColor);
+    current = c
+}
+
+function deselect() {
+    $('#dialog').hide()
+    if (current != null) {
+        if (objects[current].isBad != null) {
+            polygons[current].options.set('fillColor', objects[current].isBad ? badColor : goodColor);
+        }
+        else {
+            polygons[current].options.set('fillColor', defaultColor);
+        }
+        current = null
+    }
+}
+
+function nextPolygon() {
+    var next
+    if (current === undefined) {
+        next = 0;
+    } else {
+        next = (current + 1) % polygons.length;
+    }
+
+    deselect()
+    select(next)
+    map.setBounds(polygons[current].geometry.getBounds());
+    map.setZoom(19);
+}
+
+function prevPolygon() {
+    var next
+    if (current === undefined) {
+        next = polygons.length - 1;
+    } else {
+        next = (current + polygons.length - 1) % polygons.length;
+    }
+
+    deselect()
+    select(next)
+    map.setBounds(polygons[current].geometry.getBounds());
+    map.setZoom(19);
+}
+
+function mark(isBad, de=true) {
+    if (current == null) {
+        return;
+    }
+    polygons[current].options.set('fillColor', isBad ? badColor : goodColor);
+    objects[current].isBad = isBad;
+    saveMarkup(current);
+    if (de) {
+        deselect()
+    }
+}
+
+$(document).ready(function(){
+    $("#yes").click(function(){
+        mark(false)
+    });
+    $("#no").click(function(){
+        mark(true)
+    });
+});
+
+function saveMarkup(id) {
+    $.ajax({
+        type: "POST",
+        url: "/map/save_data",
+        contentType: "application/json;charset=UTF-8",
+        data: JSON.stringify({
+            id: objects[id].id,
+            isBad: objects[id].isBad
+        }),
+        dataType: "json"
+    });
+}
+
+function nextTask() {
+    if (!allChecked()) {
+        alert("Проверьте, пожалуйста, всю разметку. Отмечайте, также и хорошую разметку (она должна загореться синим цветом).");
+    } else {
+        $.ajax({
+            type: "POST",
+            url: "/map/save_data",
+            contentType: "application/json;charset=UTF-8",
+            data: JSON.stringify({
+                complete: "da"
+            }),
+            dataType: "json"
+        });
+        loadMarkup();
+    }
+}
+
+function removeChildren(element) {
+    while (element.firstChild) {
+        element.removeChild(element.firstChild);
+    }
+}
+
+function loadMarkup() {
+    map.geoObjects.removeAll();
+
+    $.post('/map/get_data', {}).done(function(data) {
+        if (data === null) {
+            $(location).attr('href', '/finish');
+            return;
+        }
+        objects = data.task;
+
+        const num_all = $("#num_all")[0];
+        const num_finished = $("#num_finished")[0];
+        removeChildren(num_all);
+        removeChildren(num_finished);
+
+        num_all.appendChild(document.createTextNode(data.available));
+        num_finished.appendChild(document.createTextNode(data.done));
+        index = {};
+
+        for (var i = 0; i < objects.length; i++) {
+            if (i === 0) {
+                marker = new ymaps.Placemark(objects[i].coords[0][0], {
+                     iconCaption: "Разметка"
+                })
+            }
+
+            index[objects[i].id] = i;
+
+            polygons[i] = new ymaps.Polygon([objects[i].coords[0]], {}, {
+                fillColor: defaultColor,
+                strokeColor: "#000000",
+                strokeWidth: 2,
+                fillOpacity: 0.5,
+            });
+            polygons[i].idx = i
+            polygons[i].events.add('click', function(e) {
+                select(e.get('target').idx)
+            })
+
+            map.geoObjects.add(polygons[i]);
+        }
+
+        for (i in data.results) {
+            var id = data.results[i].id;
+            objects[index[id]].isBad = data.results[i].isBad;
+            polygons[index[id]].options.set('fillColor', data.results[i].isBad ? badColor : goodColor);
+        }
+
+        map.setBounds(map.geoObjects.getBounds());
+    });
+}
+
+
+
+

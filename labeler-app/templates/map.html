@@ -13,7 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
     <style>
-      html,body {width:100%;height:100%;margin:0;padding:0;}
+      html,body {width:100vw;height:100vh;margin:0;padding:0;}
 
       #map {
         display: block;
@@ -23,7 +23,7 @@
         top: 0;
         left: 0;
         right: 0;
-        margin-top: 50px;
+        margin-top: 40px;
       }
 
       .side-padded {
@@ -33,7 +33,28 @@
 
       .navbar-brand {
         font-family: "Comic Sans MS", cursive, sans-serif;
-        font-size: 30px;
+        font-size: 14pt;
+      }
+
+      .nav-link {
+        font-size: 10pt;
+      }
+      .btn {
+        font-size: 10pt;
+      }
+
+      #dialog {
+        display: none;
+        z-index: 5;
+        background-color: white;
+        position:fixed;
+        top:20vh;
+        left:50%;
+        margin-left:-100px;
+        width:200px;
+        height:110px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        border-radius: 3px;
       }
     </style>
   </head>
@@ -64,6 +85,16 @@
       </ul>
       </div>
     </nav>
+    <div id="dialog">
+      <center style="margin: 20px; font-size: 14px;"> Верен ли выделенный белым контур? </center>
+      <button type="button" data-target="dialog" class="close" aria-label="Close" style="position: absolute; right: 5px; top: 0;">
+        <a onclick="deselect()" aria-hidden="true">&times;</a>
+      </button>
+      <div style="display:inline-block;overflow: auto; width: 100%; padding-bottom: 5px; padding-left: 10px; padding-right: 10px; position: absolute; bottom: 0;">
+        <button id="yes" class="btn" style="float: left;" type="button">Да</button>
+        <button id="no" class="btn" style="float: right;" type="button">Нет</button>
+      </div>
+    </div>
     <div id="map"></div>
   </body>
 </html>
