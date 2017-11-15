@@ -1,18 +1,53 @@
 {% extends 'layout.html' %}
 
 {% block body %}
-    <h1>Register</h1>
-    {% from "includes/_formhelpers.html" import render_field %}
-    <form method="POST" action="">
-        <div class="form-group">
-            {{render_field(form.username, class_="form-control")}}
+    <div class="container col-xs-12 col-sm-offset-2 col-sm-8 col-md-offset-3 col-md-6 col-lg-offset-4 col-lg-4">
+      <br />
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h1>Register</h1>
         </div>
-        <div class="form-group">
-            {{render_field(form.password, class_="form-control")}}
+        <div class="panel-body">
+          <form action="" method="POST">
+            <div class="form-group">
+              <div class="input-group">
+                <span class="input-group-addon">
+                    <i class="glyphicon glyphicon-user" style="width: auto"></i>
+                </span>
+                <input type="text" class="form-control" name="username" value="{{request.form.username}}" placeholder="Enter username" required=""/>
+              </div>
+              {% if form.username.errors %}
+                <ul class="errors">{% for error in form.username.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+              {% endif %}
+            </div>
+            <div class="form-group">
+              <div class="input-group">
+                <span class="input-group-addon">
+                    <i class="glyphicon glyphicon-lock" style="width: auto"></i>
+                </span>
+                <input id="password" type="password" class="form-control" name="password" value="{{request.form.password}}" placeholder="Enter password" required=""/>
+              </div>
+              {% if form.password.errors %}
+                <ul class="errors">{% for error in form.password.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+              {% endif %}
+            </div>
+            <div class="form-group">
+              <div class="input-group">
+                <span class="input-group-addon">
+                    <i class="glyphicon glyphicon-lock" style="width: auto"></i>
+                </span>
+                <input id="confirm" type="password" class="form-control" name="confirm" value="{{request.form.confirm}}" placeholder="Confirm password" required=""/>
+              </div>
+              {% if form.confirm.errors %}
+                <ul class="errors">{% for error in form.confirm.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+              {% endif %}
+            </div>
+            <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups">
+             <button type="submit" class="btn btn-primary btn-md">Submit</button>
+             <button type="button" class="btn btn-primary btn-md btn-info" onclick="window.location.href='/login'">Login</button>
+            </div>
+          </form>
         </div>
-        <div class="form-group">
-            {{render_field(form.confirm, class_="form-control")}}
-        </div>
-        <p><input type="submit" class="btn btn-primary" value="Submit"></p>
-    </form>
+      </div>
+    </div>
 {% endblock %}

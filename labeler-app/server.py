@@ -44,7 +44,6 @@ def register():
             flash('User with this "username" already registered', 'danger')
             return render_template('register.html', form=form)
         login_user(users.find(username))
-        flash('You are now registered and can log in', 'success')
         return redirect(url_for('map'))
     return render_template('register.html', form=form)
 

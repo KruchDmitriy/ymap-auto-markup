@@ -11,28 +11,24 @@
       <form action="" method="POST">
         <div class="form-group">
           <div class="input-group">
-                        <span class="input-group-addon">
-                            <i class="glyphicon glyphicon-user" style="width: auto"></i>
-                        </span>
+            <span class="input-group-addon">
+                <i class="glyphicon glyphicon-user" style="width: auto"></i>
+            </span>
             <input type="text" class="form-control" name="username" value="{{request.form.username}}" placeholder="Enter username" required=""/>
           </div>
         </div>
         <div class="form-group">
           <div class="input-group">
-                        <span class="input-group-addon">
-                            <i class="glyphicon glyphicon-lock" style="width: auto"></i>
-                        </span>
-            <input type="password" class="form-control" name="password" value="{{request.form.password}}" placeholder="Enter password" required=""/>
+            <span class="input-group-addon">
+                <i class="glyphicon glyphicon-lock" style="width: auto"></i>
+            </span>
+            <input type="password" class="form-control" name="password" value="{{request.form.confirm}}" placeholder="Enter password" required=""/>
           </div>
         </div>
-        <span class="row">
-          <button type="submit" class="btn btn-primary" style="width: 50%">
-            Submit
-          </button>
-          <button type="button" class="btn btn-primary" style="width: 50%" onclick="window.location.href = '/register'">
-            Register
-          </button>
-        </span>
+        <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups">
+          <button type="submit" class="btn btn-primary">Submit</button>
+          <button type="button" class="btn btn-primary btn-info" onclick="window.location.href = '/register'">Register</button>
+        </div>
       </form>
     </div>
   </div>
