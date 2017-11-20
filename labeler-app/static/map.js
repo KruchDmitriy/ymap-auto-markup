@@ -7,6 +7,8 @@ const defaultColor = '#ffff00';
 const goodColor = '#0000ff';
 const badColor = '#ff0000';
 const selectedColor = '#ffffff';
+const selectedGoodColor = '#bbbbff';
+const selectedBadColor = '#ffbbbb';
 
 function init() {
     ymaps.geocode('Нижний Новгород', { results: 1 }).then(function (res) {
@@ -82,7 +84,7 @@ function init() {
                 mark(true, false);
                 break;
             case KEY_CODES["ESCAPE"]:
-                deselect();
+                cancel();
                 checkedPolygonIdx = undefined;
                 break;
             case KEY_CODES["ENTER"]:
@@ -121,27 +123,50 @@ function allChecked() {
     }
 
 var current = null;
+var before = null;
+
+function setColor(c) {
+    if (c !== current) {
+        if (objects[c].isBad != null) {
+            polygons[c].options.set('fillColor', objects[c].isBad ? badColor : goodColor);
+        }
+        else {
+            polygons[c].options.set('fillColor', defaultColor);
+        }
+    }
+    else {
+        if (objects[c].isBad != null) {
+            polygons[c].options.set('fillColor', objects[c].isBad ? selectedBadColor : selectedGoodColor);
+        }
+        else {
+            polygons[c].options.set('fillColor', selectedColor);
+        }
+    }
+}
 
 function select(c) {
     if (current !== null) {
         deselect()
     }
+    current = c;
+    before = objects[current].isBad;
+    setColor(c);
     $('#dialog').show();
-    polygons[c].options.set('fillColor', selectedColor);
-    current = c
 }
 
 function deselect() {
+    var c = current;
+    current = null;
+    setColor(c);
     $('#dialog').hide();
-    if (current !== null) {
-        if (objects[current].isBad !== null) {
-            polygons[current].options.set('fillColor', objects[current].isBad ? badColor : goodColor);
-        }
-        else {
-            polygons[current].options.set('fillColor', defaultColor);
-        }
-        current = null;
+}
+
+function cancel() {
+    if (current === null) {
+        return;
     }
+    objects[current].isBad = before;
+    deselect(current);
 }
 
 function nextPolygon() {
@@ -152,7 +177,6 @@ function nextPolygon() {
         next = (current + 1) % polygons.length;
     }
 
-    deselect();
     select(next);
     map.setBounds(polygons[current].geometry.getBounds());
     map.setZoom(19);
@@ -166,7 +190,6 @@ function prevPolygon() {
         next = (current + polygons.length - 1) % polygons.length;
     }
 
-    deselect();
     select(next);
     map.setBounds(polygons[current].geometry.getBounds());
     map.setZoom(19);
@@ -176,8 +199,8 @@ function mark(isBad, de=true) {
     if (current === null) {
         return;
     }
-    polygons[current].options.set('fillColor', isBad ? badColor : goodColor);
     objects[current].isBad = isBad;
+    setColor(current);
     saveMarkup(current);
     if (de) {
         deselect();
@@ -191,6 +214,7 @@ $(document).ready(function(){
     $("#no").click(function(){
         mark(true);
     });
+    $("#dialog").draggable();
 });
 
 function saveMarkup(id) {
