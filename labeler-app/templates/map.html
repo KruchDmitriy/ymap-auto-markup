@@ -73,10 +73,17 @@
 
       <ul class="navbar-nav navbar-right">
         <li class="nav-item side-padded">
+          <button id="clear-screen" class="btn align-middle" type="button">Убрать разметку</button>
+        </li>
+        <li class="nav-item side-padded">
+          <button id="go-to-nmap" class="btn align-middle" type="button">Открыть в НК</button>
+        </li>
+
+        <li class="nav-item side-padded">
           <button id="go-to-markup" class="btn align-middle" type="button">К разметке</button>
         </li>
         <li class="nav-item side-padded">
-          <button id="next-task-button" class="btn align-middle" type="button">Следующее задание</button>
+          <button id="next-task-button" class="btn align-middle btn-success" type="button">Следующее задание</button>
         </li>
         <li class="nav-item side-padded active">
           <a class="nav-link" href="/logout">Выйти</a>
@@ -85,7 +92,7 @@
       </div>
     </nav>
     <div id="dialog" class="ui-widget-content">
-      <center style="margin: 20px; font-size: 14px;"> Верен ли выделенный белым контур? </center>
+      <center style="margin: 20px; font-size: 14px;"> Верен ли выделенный контур? </center>
       <button type="button" data-target="dialog" class="close" aria-label="Close" style="position: absolute; right: 5px; top: 0;">
         <a onclick="cancel()" aria-hidden="true">&times;</a>
       </button>
