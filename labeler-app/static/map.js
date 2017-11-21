@@ -21,20 +21,9 @@ function init() {
         });
 
         map.container.fitToViewport();
-
-        $("#next-task-button").click(function(event) {
-            nextTask();
-            event.stopPropagation();
-        });
-
-        $("#go-to-markup").click(function(event) {
-            map.setBounds(map.geoObjects.getBounds());
-            event.stopPropagation();
-        });
-
         map.events.add('boundschange', function (e) {
             if (e.get('newZoom') !== e.get('oldZoom')) {
-                if (marker !== null) {
+                if (marker != undefined) {
                     if (e.get('newZoom') > 14) {
                         map.geoObjects.remove(marker)
                     }
@@ -49,19 +38,297 @@ function init() {
     }, function(err) {
         console.error(err.message);
     });
+}
 
-    const KEY_CODES = {
-        "ENTER": 13,
-        "LEFT_ARROW": 37,
-        "UP_ARROW": 38,
-        "RIGHT_ARROW": 39,
-        "DOWN_ARROW": 40,
-        "Y": 89,
-        "N": 78,
-        "ESCAPE": 27,
-        "ZOOM_IN": 187,
-        "ZOOM_OUT": 189
-    };
+function checkComplete() {
+    var result = true;
+
+    for (var i = 0; i < objects.length && result; i++) {
+        // noinspection EqualityComparisonWithCoercionJS
+        if (objects[i].isBad == undefined) {
+            result = false;
+        }
+    }
+
+    $("#next-task-button").toggleClass("disabled", !result);
+
+    return result;
+}
+
+var selected = [];
+var before = {};
+
+function updateColor(c) {
+    polygons[c].options.set('fillOpacity', "0.5");
+    if (selected.indexOf(c) < 0) {
+        if (objects[c].isBad != undefined) {
+            polygons[c].options.set('fillColor', objects[c].isBad ? badColor : goodColor);
+        }
+        else {
+            polygons[c].options.set('fillColor', defaultColor);
+        }
+    }
+    else if (type !== 'single') {
+        if (objects[c].isBad != undefined) {
+            polygons[c].options.set('fillColor', objects[c].isBad ? selectedBadColor : selectedGoodColor);
+        }
+        else {
+            polygons[c].options.set('fillColor', selectedColor);
+        }
+    }
+    else {
+        polygons[c].options.set('fillOpacity', "0");
+    }
+}
+
+function select(c) {
+    if (selected.indexOf(c) >= 0) {
+        return;
+    }
+    selected.push(c);
+    before[c] = objects[c].isBad;
+    updateColor(c);
+    $('#dialog').show();
+}
+
+function deselect(c) {
+    var update = [];
+    if (c == undefined) {
+        update = selected;
+        selected = []
+    }
+    else {
+        var index = selected.indexOf(c);
+        if (index >= 0) {
+            selected.splice(index, 1);
+            update = [c];
+        }
+
+    }
+    for(var i in update) {
+        updateColor(update[i]);
+    }
+    if (selected.length === 0)
+        $('#dialog').hide();
+}
+
+function cancel() {
+    if (selected == undefined) {
+        return;
+    }
+    for (var i in selected) {
+        objects[selected[i]].isBad = before[selected[i]];
+    }
+    deselect();
+}
+
+function nextPolygon() {
+    var next;
+    if (selected.length !== 1) {
+        next = 0;
+    } else {
+        next = (selected[0] + 1) % polygons.length;
+    }
+
+    var index = 0;
+    while (objects[next].isBad != undefined && index < polygons.length) {
+        next = (next + 1) % polygons.length;
+        index++;
+    }
+
+    deselect();
+    select(next);
+    var bounds = polygons[selected].geometry.getBounds();
+    map.setCenter([(bounds[0][0] + bounds[1][0])/2, (bounds[0][1] + bounds[1][1])/2]);
+    map.setZoom(19);
+}
+
+function prevPolygon() {
+    var next;
+    if (selected !== 1) {
+        next = polygons.length - 1;
+    } else {
+        next = (selected[0] + polygons.length - 1) % polygons.length;
+    }
+    var index = 0;
+    while (objects[next].isBad != undefined && index < polygons.length) {
+        next = (next + polygons.length - 1) % polygons.length;
+        index++;
+    }
+
+    deselect();
+    select(next);
+    var bounds = polygons[selected].geometry.getBounds();
+    map.setCenter([(bounds[0][0] + bounds[1][0])/2, (bounds[0][1] + bounds[1][1])/2]);
+    map.setZoom(19);
+}
+
+function mark(isBad) {
+    if (selected == undefined) {
+        return;
+    }
+    for (var i in selected) {
+        objects[selected[i]].isBad = isBad;
+        updateColor(selected[i]);
+        saveMarkup(selected[i]);
+    }
+    checkComplete();
+}
+
+function saveMarkup(id) {
+    $.ajax({
+        type: "POST",
+        url: "/map/save_data",
+        contentType: "application/json;charset=UTF-8",
+        data: JSON.stringify({
+            id: objects[id].id,
+            isBad: objects[id].isBad
+        }),
+        dataType: "json"
+    });
+}
+
+function nextTask() {
+    if (!checkComplete()) {
+        alert("Проверьте, пожалуйста, всю разметку. Отмечайте, также и хорошую разметку (она должна загореться синим цветом).");
+        nextPolygon()
+    } else {
+        $.ajax({
+            type: "POST",
+            url: "/map/save_data",
+            contentType: "application/json;charset=UTF-8",
+            data: JSON.stringify({
+                complete: "da"
+            }),
+            dataType: "json"
+        });
+        loadMarkup();
+    }
+}
+
+function nMapsOpen() {
+    var center = map.getCenter();
+    var zoom = map.getZoom();
+    var url = "https://n.maps.yandex.ru/#!/?z=" + zoom + "&ll=" + center[0] + "%2C" + center[1] + "&l=nk%23sat";
+    window.open(url, '_blank');
+}
+
+function loadMarkup() {
+    $.post('/map/get_data', {}).done(function(data) {
+        if (data == undefined) {
+            $(location).attr('href', '/finish');
+            return;
+        }
+        objects = data.task;
+
+        $("#num_all").text(data.available);
+        $("#num_finished").text(data.done - 1);
+
+        index = {};
+        for (var i = 0; i < objects.length; i++) {
+            index[objects[i].id] = i;
+        }
+
+        if (objects.length > 0) {
+            marker = new ymaps.Placemark(objects[0].coords[0], {
+                iconCaption: "Разметка"
+            });
+        }
+
+        for (var i in data.results) {
+            var id = data.results[i].id;
+            objects[index[id]].isBad = data.results[i].isBad;
+        }
+
+        draw();
+        if (objects.length > 0) {
+            map.setBounds(map.geoObjects.getBounds());
+        }
+        checkComplete()
+    });
+}
+
+var type = "full";
+function changeMarkupType(button) {
+    if (type === "full") {
+        type = "single";
+        button.text('Вернуть разметку');
+        draw(selected);
+    }
+    else {
+        type = "full";
+        button.text('Убрать разметку');
+        draw();
+    }
+}
+
+function draw(indices) {
+    map.geoObjects.removeAll();
+    for (var i = 0; i < objects.length; i++) {
+        polygons[i] = new ymaps.Polygon([objects[i].coords], {}, {
+            fillColor: defaultColor,
+            strokeColor: "#000000",
+            strokeWidth: 1,
+            fillOpacity: 0.5
+        });
+        polygons[i].idx = i;
+        if (type === "full") {
+            polygons[i].events.add('click', function (e) {
+                var index = e.get('target').idx;
+                if (selected.indexOf(index) < 0) {
+                    select(e.get('target').idx)
+                }
+                else {
+                    deselect(e.get('target').idx)
+                }
+            });
+        }
+        updateColor(i);
+        if (indices == undefined || indices.indexOf(i) >= 0) {
+            map.geoObjects.add(polygons[i]);
+        }
+    }
+}
+
+const KEY_CODES = {
+    "ENTER": 13,
+    "LEFT_ARROW": 37,
+    "UP_ARROW": 38,
+    "RIGHT_ARROW": 39,
+    "DOWN_ARROW": 40,
+    "Y": 89,
+    "N": 78,
+    "ESCAPE": 27,
+    "ZOOM_IN": 187,
+    "ZOOM_OUT": 189
+};
+
+$(document).ready(function(){
+    $("#yes").click(function(){
+        mark(false);
+        deselect();
+    });
+    $("#no").click(function(){
+        mark(true);
+        deselect();
+    });
+    $("#dialog").draggable();
+    $("#next-task-button").click(function(event) {
+        nextTask();
+        event.stopPropagation();
+    });
+    $("#go-to-markup").click(function(event) {
+        map.setBounds(map.geoObjects.getBounds());
+        event.stopPropagation();
+    });
+    $("#go-to-nmap").click(function(event) {
+        nMapsOpen();
+        event.stopPropagation();
+    });
+    $("#clear-screen").click(function(event) {
+        changeMarkupType($(this));
+        event.stopPropagation();
+    });
 
     window.addEventListener('keydown', function(event) {
         switch (event.keyCode) {
@@ -72,16 +339,16 @@ function init() {
                 nextPolygon();
                 break;
             case KEY_CODES["UP_ARROW"]: case KEY_CODES["Y"]:
-                if (current === undefined)
+                if (selected.length === 0)
                     break;
 
-                mark(false, false);
+                mark(false);
                 break;
             case KEY_CODES["DOWN_ARROW"]: case KEY_CODES["N"]:
-                if (current === undefined)
+                if (selected.length === 0)
                     break;
 
-                mark(true, false);
+                mark(true);
                 break;
             case KEY_CODES["ESCAPE"]:
                 cancel();
@@ -107,204 +374,4 @@ function init() {
         event.stopPropagation();
         event.preventDefault();
     });
-}
-
-function allChecked() {
-        if (objects === undefined)
-            return false;
-
-        for (var i = 0; i < objects.length; i++) {
-            if (objects[i].isBad === undefined) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-var current = null;
-var before = null;
-
-function setColor(c) {
-    if (c !== current) {
-        if (objects[c].isBad != null) {
-            polygons[c].options.set('fillColor', objects[c].isBad ? badColor : goodColor);
-        }
-        else {
-            polygons[c].options.set('fillColor', defaultColor);
-        }
-    }
-    else {
-        if (objects[c].isBad != null) {
-            polygons[c].options.set('fillColor', objects[c].isBad ? selectedBadColor : selectedGoodColor);
-        }
-        else {
-            polygons[c].options.set('fillColor', selectedColor);
-        }
-    }
-}
-
-function select(c) {
-    if (current !== null) {
-        deselect()
-    }
-    current = c;
-    before = objects[current].isBad;
-    setColor(c);
-    $('#dialog').show();
-}
-
-function deselect() {
-    var c = current;
-    current = null;
-    setColor(c);
-    $('#dialog').hide();
-}
-
-function cancel() {
-    if (current === null) {
-        return;
-    }
-    objects[current].isBad = before;
-    deselect(current);
-}
-
-function nextPolygon() {
-    var next;
-    if (current === undefined) {
-        next = 0;
-    } else {
-        next = (current + 1) % polygons.length;
-    }
-
-    select(next);
-    map.setBounds(polygons[current].geometry.getBounds());
-    map.setZoom(19);
-}
-
-function prevPolygon() {
-    var next;
-    if (current === undefined) {
-        next = polygons.length - 1;
-    } else {
-        next = (current + polygons.length - 1) % polygons.length;
-    }
-
-    select(next);
-    map.setBounds(polygons[current].geometry.getBounds());
-    map.setZoom(19);
-}
-
-function mark(isBad, de=true) {
-    if (current === null) {
-        return;
-    }
-    objects[current].isBad = isBad;
-    setColor(current);
-    saveMarkup(current);
-    if (de) {
-        deselect();
-    }
-}
-
-$(document).ready(function(){
-    $("#yes").click(function(){
-        mark(false);
-    });
-    $("#no").click(function(){
-        mark(true);
-    });
-    $("#dialog").draggable();
 });
-
-function saveMarkup(id) {
-    $.ajax({
-        type: "POST",
-        url: "/map/save_data",
-        contentType: "application/json;charset=UTF-8",
-        data: JSON.stringify({
-            id: objects[id].id,
-            isBad: objects[id].isBad
-        }),
-        dataType: "json"
-    });
-}
-
-function nextTask() {
-    if (!allChecked()) {
-        alert("Проверьте, пожалуйста, всю разметку. Отмечайте, также и хорошую разметку (она должна загореться синим цветом).");
-    } else {
-        $.ajax({
-            type: "POST",
-            url: "/map/save_data",
-            contentType: "application/json;charset=UTF-8",
-            data: JSON.stringify({
-                complete: "da"
-            }),
-            dataType: "json"
-        });
-        loadMarkup();
-    }
-}
-
-function removeChildren(element) {
-    while (element.firstChild) {
-        element.removeChild(element.firstChild);
-    }
-}
-
-function loadMarkup() {
-    map.geoObjects.removeAll();
-
-    $.post('/map/get_data', {}).done(function(data) {
-        if (data === null) {
-            $(location).attr('href', '/finish');
-            return;
-        }
-        objects = data.task;
-
-        const num_all = $("#num_all")[0];
-        const num_finished = $("#num_finished")[0];
-        removeChildren(num_all);
-        removeChildren(num_finished);
-
-        num_all.appendChild(document.createTextNode(data.available));
-        num_finished.appendChild(document.createTextNode(data.done));
-        index = {};
-
-        for (var i = 0; i < objects.length; i++) {
-            if (i === 0) {
-                marker = new ymaps.Placemark(objects[i].coords, {
-                     iconCaption: "Разметка"
-                })
-            }
-
-            index[objects[i].id] = i;
-
-            polygons[i] = new ymaps.Polygon([objects[i].coords], {}, {
-                fillColor: defaultColor,
-                strokeColor: "#000000",
-                strokeWidth: 2,
-                fillOpacity: 0.5
-            });
-            polygons[i].idx = i;
-            polygons[i].events.add('click', function(e) {
-                select(e.get('target').idx)
-            });
-
-            map.geoObjects.add(polygons[i]);
-        }
-
-        for (i in data.results) {
-            var id = data.results[i].id;
-            objects[index[id]].isBad = data.results[i].isBad;
-            polygons[index[id]].options.set('fillColor', data.results[i].isBad ? badColor : goodColor);
-        }
-
-        map.setBounds(map.geoObjects.getBounds());
-    });
-}
-
-
-
-
