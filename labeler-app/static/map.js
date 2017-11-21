@@ -274,14 +274,14 @@ function loadMarkup() {
 
         for (var i = 0; i < objects.length; i++) {
             if (i === 0) {
-                marker = new ymaps.Placemark(objects[i].coords[0][0], {
+                marker = new ymaps.Placemark(objects[i].coords, {
                      iconCaption: "Разметка"
                 })
             }
 
             index[objects[i].id] = i;
 
-            polygons[i] = new ymaps.Polygon([objects[i].coords[0]], {}, {
+            polygons[i] = new ymaps.Polygon([objects[i].coords], {}, {
                 fillColor: defaultColor,
                 strokeColor: "#000000",
                 strokeWidth: 2,
