@@ -145,7 +145,7 @@ function nextPolygon() {
 
 function prevPolygon() {
     var next;
-    if (selected !== 1) {
+    if (selected.length !== 1) {
         next = polygons.length - 1;
     } else {
         next = (selected[0] + polygons.length - 1) % polygons.length;
