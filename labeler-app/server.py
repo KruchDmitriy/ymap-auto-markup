@@ -88,8 +88,8 @@ def save_data():
     payload = request.get_json()
 
     if 'id' in payload:
-        task_manager.append_result(current_user.get_id(), current_user.get_task(), payload)
-    if 'complete' in payload:
+        task_manager.append_result(current_user.get_id(), payload)
+    if 'complete' in payload and payload['complete']:
         current_user.set_task(task_manager.next_task(current_user.get_id()))
     return ''
 

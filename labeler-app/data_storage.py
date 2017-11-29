@@ -41,7 +41,8 @@ class TaskManager:
                     self.users_index[u] = []
                 self.users_index[u].append(tid)
 
-    def append_result(self, user, task, markup_json):
+    def append_result(self, user, markup_json):
+        task = markup_json['taskId']
         result = list(filter(lambda r: r['task'] == task and r['user'] == user, self.results))
         if result:
             result[0]['results'].append(markup_json)
@@ -88,6 +89,7 @@ class TaskManager:
         if task in self.tasks:
             state = list(filter(lambda r: r['task'] == task and r['user'] == user, self.results))
             return {
+                'id': task,
                 'task': deepcopy(self.tasks[task]),
                 'available': len(list(filter(lambda task: len(task['occupied']) == 0, self.tasks_index))),
                 'done': len(self.users_index[user]),

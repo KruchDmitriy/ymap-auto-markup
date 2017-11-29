@@ -1,6 +1,6 @@
 ymaps.ready(init);
 
-var map, objects, polygons = [], index = {};
+var map, objects, polygons = [], index = {}, taskId;
 var marker = undefined;
 
 const defaultColor = '#ffff00';
@@ -181,8 +181,9 @@ function saveMarkup(id) {
         url: "/map/save_data",
         contentType: "application/json;charset=UTF-8",
         data: JSON.stringify({
-            id: objects[id].id,
-            isBad: objects[id].isBad
+            'taskId': taskId,
+            'id': objects[id].id,
+            'isBad': objects[id].isBad
         }),
         dataType: "json"
     });
@@ -198,9 +199,10 @@ function nextTask() {
             url: "/map/save_data",
             contentType: "application/json;charset=UTF-8",
             data: JSON.stringify({
-                complete: "da"
+                'complete': true
             }),
-            dataType: "json"
+            dataType: "json",
+            async: false
         });
         loadMarkup();
     }
@@ -219,6 +221,7 @@ function loadMarkup() {
             $(location).attr('href', '/finish');
             return;
         }
+        taskId = data.id
         objects = data.task;
 
         $("#num_all").text(data.available);
