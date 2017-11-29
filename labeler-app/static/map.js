@@ -237,6 +237,8 @@ function loadMarkup() {
 
         for (var i in data.results) {
             var id = data.results[i].id;
+            if (index[id] == undefined || index[id] >= objects.length)
+                continue;
             objects[index[id]].isBad = data.results[i].isBad;
         }
 
