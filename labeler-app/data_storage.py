@@ -48,7 +48,7 @@ class TaskManager:
             result[0]['results'].append(markup_json)
             self._flush()
         else:
-            logging.warning("Attempting to add result to unknown task: {} user: {}" % [task, user])
+            logging.warning("Attempting to add result to unknown task: {} user: {}".format(task, user))
 
     def next_task(self, user):
         if user not in self.users_index:
