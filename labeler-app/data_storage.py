@@ -8,7 +8,7 @@ import json
 
 
 class TaskManager:
-    MARKUP_TASKS = "./data/markup_tasks/"
+    MARKUP_TASKS = "./data/markup_variation/"
     RESULTS = './data/results.json'
 
     def __init__(self):
@@ -54,7 +54,6 @@ class TaskManager:
                 'user': user,
                 'results': [markup_json]
             })
-
 
     def next_task(self, user):
         if user not in self.users_index:

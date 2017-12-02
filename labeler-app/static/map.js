@@ -221,7 +221,7 @@ function loadMarkup() {
             $(location).attr('href', '/finish');
             return;
         }
-        taskId = data.id
+        taskId = data.id;
         objects = data.task;
 
         $("#num_all").text(data.available);
@@ -269,6 +269,7 @@ function changeMarkupType(button) {
 
 function draw(indices) {
     map.geoObjects.removeAll();
+    polygons = [];
     for (var i = 0; i < objects.length; i++) {
         polygons[i] = new ymaps.Polygon([objects[i].coords], {}, {
             fillColor: defaultColor,
