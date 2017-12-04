@@ -90,8 +90,11 @@ class Building:
 
     def apply_transform(self, transform, description):
         self.meta['transform'] = description
+
         for i, point in enumerate(self.raw_coords):
             self.raw_coords[i] = transform(point)
+
+        self.raw_coords[len(self.raw_coords) - 1] = self.raw_coords[0]
         self.polygon = Polygon(self.raw_coords)
 
     def flush(self, file_desc):
@@ -192,10 +195,11 @@ class Variator:
     METHODS = ['rotate', 'trans', 'scale', 'point_shift']
     _ID_MATRIX = np.eye(3)
 
-    def __init__(self, sigma_trans, sigma_rotate, sigma_scale):
+    def __init__(self, sigma_trans, sigma_rotate, sigma_scale, sigma_point_shift):
         self.rng_rotate = lambda: np.random.normal(0., sigma_rotate)
         self.rng_trans = lambda: np.random.normal([0., 0.], sigma_trans)
         self.rng_scale = lambda: np.random.normal(1., sigma_scale)
+        self.rng_point_shift = lambda: np.random.normal([0., 0.], sigma_point_shift)
 
     @staticmethod
     def _affine_transform(point, affine_matrix):
@@ -208,11 +212,14 @@ class Variator:
         return [dst_latlon[1], dst_latlon[0]]
 
     @staticmethod
-    def _point_shift(point, rng):
+    def _point_shift(point, rng, log=None):
         src_utm = utm.from_latlon(longitude=point[0], latitude=point[1])
 
         src = np.array([src_utm[0], src_utm[1]])
-        dst = src + rng()
+        shift = rng()
+        if log is not None:
+            log.append(list(shift))
+        dst = src + shift
 
         dst_latlon = utm.to_latlon(dst[0], dst[1], src_utm[2], src_utm[3])
         return [dst_latlon[1], dst_latlon[0]]
@@ -287,21 +294,23 @@ class Variator:
             )
 
             if 'point_shift' in methods:
+                point_shift_log = []
                 transform_description['point_shift'] = True
                 bld_copy.apply_transform(
-                    lambda point: Variator._point_shift(point, self.rng_trans),
+                    lambda point: Variator._point_shift(point, self.rng_point_shift, log=point_shift_log),
                     description=transform_description
                 )
+                bld_copy.meta['transform']['point_shift'] = point_shift_log
 
             new_task.append(bld_copy)
 
         return new_task
 
 
-def generate_tasks(task_generator, out_dir, task_size, num_mixed, num_sequential):
+def generate_tasks(task_generator, out_dir, task_size, num_mixed, num_sequential, task_prefix_name='task'):
     tasks = task_generator.generate(task_size, num_mixed, num_sequential)
     for i, task in enumerate(tasks):
-        with open(out_dir + '/task' + str(i) + '.json', 'w') as file_desc:
+        with open(out_dir + '/' + task_prefix_name + str(i) + '.json', 'w') as file_desc:
             file_desc.write('[\n')
             for j, building in enumerate(task):
                 building.flush(file_desc)
@@ -310,14 +319,14 @@ def generate_tasks(task_generator, out_dir, task_size, num_mixed, num_sequential
             file_desc.write('\n]\n')
 
 
-def variated_task_generator(collection, results, shift, theta, scale):
+def variated_task_generator(collection, results, shift, theta, scale, sigma_point_shift):
     result_storage = ResultStorage(results)
     checked_buildings = []
     for bld_id in result_storage.checked_bld_idx:
         checked_buildings.append(collection.get_by_bld_id(bld_id))
 
     checked_collection = Collection(checked_buildings)
-    return TaskGenerator(checked_collection, Variator(shift, theta, scale))
+    return TaskGenerator(checked_collection, Variator(shift, theta, scale, sigma_point_shift))
 
 
 def main(parsed_args):
@@ -330,13 +339,15 @@ def main(parsed_args):
     collection = Collection(buildings)
 
     if parsed_args.variate:
+        task_prefix_name = "var_task"
         task_generator = variated_task_generator(collection, parsed_args.results, parsed_args.shift,
-                                                 parsed_args.theta, parsed_args.scale)
+                                                 parsed_args.theta, parsed_args.scale, parsed_args.point_shift)
     else:
+        task_prefix_name = "task"
         task_generator = TaskGenerator(collection)
 
     generate_tasks(task_generator, out_dir, parsed_args.task_size,
-                   parsed_args.n_mix, parsed_args.n_seq)
+                   parsed_args.n_mix, parsed_args.n_seq, task_prefix_name=task_prefix_name)
 
 
 def test():
@@ -346,9 +357,9 @@ def test():
 
     task = list(collection.get_nearest(collection.centers[0], 10))
 
-    shifter = Variator(0.75, 0, 0)
-    rotator = Variator(0, 0.05, 0)
-    scaler = Variator(0, 0, 0.1)
+    shifter = Variator(0.75, 0, 0, 0)
+    rotator = Variator(0, 0.05, 0, 0)
+    scaler = Variator(0, 0, 0.1, 0)
 
     tasks = {
         'task_orig': task,
@@ -380,6 +391,7 @@ if __name__ == '__main__':
     parser.add_argument('--variate', action='store_true', help='generate variation of markup')
     parser.add_argument('--results', help='path to results')
     parser.add_argument('--shift', type=float, help='std dev for variation by shift')
+    parser.add_argument('--point_shift', type=float, help='std dev for variation by point shift')
     parser.add_argument('--theta', type=float, help='std dev for variation by angle')
     parser.add_argument('--scale', type=float, help='std dev for variation by scale')
 
