@@ -74,6 +74,7 @@ class Building:
         self.height = properties['height']
         self.region = properties['region']
         self.region_cat = properties['region_cat']
+        self.meta = {'transform': None}
 
     @property
     def center(self):
@@ -87,7 +88,8 @@ class Building:
                                      latitude=center_point.xy[1][0])
         return utm_center[0], utm_center[1]
 
-    def apply_transform(self, transform):
+    def apply_transform(self, transform, description):
+        self.meta['transform'] = description
         for i, point in enumerate(self.raw_coords):
             self.raw_coords[i] = transform(point)
         self.polygon = Polygon(self.raw_coords)
@@ -96,6 +98,7 @@ class Building:
         bld_json = {
             'id': self.id,
             'coords': self.raw_coords,
+            'meta': self.meta
         }
 
         json.dump(bld_json, file_desc)
@@ -121,15 +124,14 @@ class TaskGenerator:
 
         if self.variator is not None:
             num_methods = np.random.poisson(size=len(tasks))
+            num_methods = num_methods + np.ones_like(num_methods)
             num_methods = list(map(int, num_methods))
 
             variator_methods_length = len(Variator.METHODS)
             for i in range(len(tasks)):
-                methods = []
-                for counter in range(min(4, num_methods[i])):
-                    method = Variator.METHODS[np.random.randint(0, variator_methods_length - 1)]
-                    methods.append(method)
-
+                methods_idx = np.random.choice(variator_methods_length, replace=False,
+                                               size=min(variator_methods_length, num_methods[i]))
+                methods = [Variator.METHODS[idx] for idx in methods_idx]
                 tasks[i] = self.variator.apply(tasks[i], methods=methods)
 
         return tasks
@@ -207,7 +209,8 @@ class Variator:
 
     @staticmethod
     def _point_shift(point, rng):
-        return point + rng()
+        dst = point + rng()
+        return [dst[0], dst[1]]
 
     @staticmethod
     def _rotate(theta, center):
@@ -253,26 +256,36 @@ class Variator:
             translation = Variator._ID_MATRIX
             scaling = Variator._ID_MATRIX
 
+            transform_description = {}
+
             if 'rotate' in methods:
-                rotation = Variator._rotate(self.rng_rotate(), bld.center_utm)
+                theta = self.rng_rotate()
+                transform_description['rotate'] = theta
+                rotation = Variator._rotate(theta, bld.center_utm)
 
             if 'trans' in methods:
-                trans = self.rng_trans()
-                translation = Variator._trans(trans[0], trans[1])
+                trans_x, trans_y = self.rng_trans()
+                transform_description['trans'] = [trans_x, trans_y]
+                translation = Variator._trans(trans_x, trans_y)
 
             if 'scale' in methods:
-                scaling = Variator._scale(self.rng_scale(), bld.center_utm)
+                scale = self.rng_scale()
+                transform_description['scale'] = scale
+                scaling = Variator._scale(scale, bld.center_utm)
 
             affine_matrix = np.matmul(np.matmul(rotation, translation), scaling)
 
             bld_copy = deepcopy(bld)
             bld_copy.apply_transform(
-                lambda point: Variator._affine_transform(point, affine_matrix)
+                lambda point: Variator._affine_transform(point, affine_matrix),
+                description=transform_description
             )
 
             if 'point_shift' in methods:
+                transform_description['point_shift'] = True
                 bld_copy.apply_transform(
-                    lambda point: Variator._point_shift(point, self.rng_trans)
+                    lambda point: Variator._point_shift(point, self.rng_trans),
+                    description=transform_description
                 )
 
             new_task.append(bld_copy)
