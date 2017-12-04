@@ -209,8 +209,13 @@ class Variator:
 
     @staticmethod
     def _point_shift(point, rng):
-        dst = point + rng()
-        return [dst[0], dst[1]]
+        src_utm = utm.from_latlon(longitude=point[0], latitude=point[1])
+
+        src = np.array([src_utm[0], src_utm[1]])
+        dst = src + rng()
+
+        dst_latlon = utm.to_latlon(dst[0], dst[1], src_utm[2], src_utm[3])
+        return [dst_latlon[1], dst_latlon[0]]
 
     @staticmethod
     def _rotate(theta, center):
