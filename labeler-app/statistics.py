@@ -74,7 +74,7 @@ class Statistics:
             self.user_stat[user] = {
                 "numCompletedTasks": 0,
                 "numCheckedBlds": 0,
-                "numAloneCheckedTasks": 0
+                "numAloneCheckedBlds": 0
             }
 
         self.user_stat[user]["numCompletedTasks"] += 1
@@ -107,7 +107,7 @@ class Statistics:
                         self.user_stat[user2]["numDisagreement"] += 1
         else:
             self.num_alone_tasks += 1
-            self.user_stat[bld_users[0]]["numAloneCheckedTasks"] += 1
+            self.user_stat[bld_users[0]]["numAloneCheckedBlds"] += 1
 
     def calculate(self):
         for result in self.results:
