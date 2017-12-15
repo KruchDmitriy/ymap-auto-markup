@@ -8,7 +8,7 @@ import json
 
 
 class TaskManager:
-    MARKUP_TASKS = "./data/markup_variation/"
+    MARKUP_TASKS = "./data/markup_tasks/"
     RESULTS = './data/results.json'
 
     def __init__(self):
@@ -100,6 +100,9 @@ class TaskManager:
                 'done': len(self.users_index[user]),
                 'results': state[0]['results'] if state else []
             }
+
+    def get_task_by_id(self, task):
+        return self.tasks[task]
 
     def _flush(self):
         with open(self.RESULTS, 'w') as markup_file:
