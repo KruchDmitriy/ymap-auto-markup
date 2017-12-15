@@ -11,6 +11,7 @@ class Statistics:
         self.task_to_users = {}
         self.bld_to_check = {}
         self.user_stat = {}
+        self.num_alone_tasks = 0
         self.transform_stat = {
             'original': {},
             'rotate': {},
@@ -35,7 +36,8 @@ class Statistics:
     def _process_check_by_task(self, task_id, markup_check, user):
         task = self.task_manager.get_task_by_id(task_id)
         for markup in markup_check:
-            bld = Statistics._get_bld_from_task(task, markup["id"])
+            markup_id = markup["id"]
+            bld = Statistics._get_bld_from_task(task, markup_id)
             meta = "original"
 
             plus_to = "numGood"
@@ -52,27 +54,60 @@ class Statistics:
 
             payload = {
                 "user": user,
-                "coords": bld["coords"],
-                "meta": meta,
                 "isBad": markup["isBad"]
             }
 
-            if markup["id"] not in self.bld_to_check:
-                self.bld_to_check[markup["id"]] = []
+            if markup_id not in self.bld_to_check:
+                self.bld_to_check[markup_id] = {}
 
-            self.bld_to_check[markup["id"]].append(payload)
+            if task_id not in self.bld_to_check[markup_id]:
+                self.bld_to_check[markup_id][task_id] = {
+                    "coords": bld["coords"],
+                    "meta": meta,
+                    "markup": []
+                }
+
+            self.bld_to_check[markup_id][task_id]["markup"].append(payload)
 
     def _process_check_by_user(self, check, user):
         if user not in self.user_stat:
             self.user_stat[user] = {
                 "numCompletedTasks": 0,
-                "numCheckedBlds": 0
+                "numCheckedBlds": 0,
+                "numAloneCheckedTasks": 0
             }
 
         self.user_stat[user]["numCompletedTasks"] += 1
 
         for _ in check:
             self.user_stat[user]["numCheckedBlds"] += 1
+
+    def _calc_coherence(self):
+        for user in self.user_stat:
+            self.user_stat[user]["numDisagreement"] = 0
+
+        for bld in self.bld_to_check:
+            for task_id in self.bld_to_check[bld]:
+                self._calc_coherence_markup(
+                    self.bld_to_check[bld][task_id]["markup"]
+                )
+
+    def _calc_coherence_markup(self, markup):
+        bld_users = list(set(map(lambda check: check['user'], markup)))
+
+        if len(bld_users) >= 2:
+            user_to_mark = {}
+            for check in markup:
+                user_to_mark[check['user']] = check['isBad']
+
+            for user1 in bld_users:
+                for user2 in bld_users:
+                    if user_to_mark[user1] != user_to_mark[user2]:
+                        self.user_stat[user1]["numDisagreement"] += 1
+                        self.user_stat[user2]["numDisagreement"] += 1
+        else:
+            self.num_alone_tasks += 1
+            self.user_stat[bld_users[0]]["numAloneCheckedTasks"] += 1
 
     def calculate(self):
         for result in self.results:
@@ -87,6 +122,7 @@ class Statistics:
             check = result['results']
             self._process_check_by_task(task, check, user)
             self._process_check_by_user(check, user)
+        self._calc_coherence()
 
     @staticmethod
     def _json_dump(obj, filename):
@@ -96,6 +132,8 @@ class Statistics:
     def dump(self, out_dir):
         if not exists(out_dir):
             makedirs(out_dir)
+
+        print("Number of alone checked tasks " + str(self.num_alone_tasks))
 
         Statistics._json_dump(self.task_to_users, out_dir + "/task_to_users.json")
         Statistics._json_dump(self.bld_to_check, out_dir + "/bld_to_check.json")
