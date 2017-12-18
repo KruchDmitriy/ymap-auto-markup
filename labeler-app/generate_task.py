@@ -225,7 +225,15 @@ class Variator:
         return [dst_latlon[1], dst_latlon[0]]
 
     @staticmethod
-    def _rotate(theta, center):
+    def rotate_matrix(theta):
+        return np.array([
+            [np.cos(theta), np.sin(theta), 0.],
+            [-np.sin(theta), np.cos(theta), 0.],
+            [0., 0., 1.]
+        ])
+
+    @staticmethod
+    def rotate(theta, center):
         rotation = np.array([
             [np.cos(theta), np.sin(theta), 0.],
             [-np.sin(theta), np.cos(theta), 0.],
@@ -238,7 +246,7 @@ class Variator:
         return np.matmul(np.matmul(trans_from, rotation), trans_to)
 
     @staticmethod
-    def _trans(dx, dy):
+    def trans(dx, dy):
         return np.array([
             [1., 0., dx],
             [0., 1., dy],
@@ -246,7 +254,15 @@ class Variator:
         ])
 
     @staticmethod
-    def _scale(sigma, center):
+    def scale_matrix(sigma):
+        return np.array([
+            [sigma, 0., 0.],
+            [0., sigma, 0.],
+            [0., 0., 1.]
+        ])
+
+    @staticmethod
+    def scale(sigma, center):
         scale = np.array([
             [sigma, 0., 0.],
             [0., sigma, 0.],
