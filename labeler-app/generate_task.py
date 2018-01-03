@@ -11,6 +11,7 @@ from numpy.random import randint
 from shapely.geometry import Polygon
 from result_storage import ResultStorage
 from copy import deepcopy
+from affine import AffineMx
 
 
 class Collection:
@@ -224,56 +225,6 @@ class Variator:
         dst_latlon = utm.to_latlon(dst[0], dst[1], src_utm[2], src_utm[3])
         return [dst_latlon[1], dst_latlon[0]]
 
-    @staticmethod
-    def rotate_matrix(theta):
-        return np.array([
-            [np.cos(theta), np.sin(theta), 0.],
-            [-np.sin(theta), np.cos(theta), 0.],
-            [0., 0., 1.]
-        ])
-
-    @staticmethod
-    def rotate(theta, center):
-        rotation = np.array([
-            [np.cos(theta), np.sin(theta), 0.],
-            [-np.sin(theta), np.cos(theta), 0.],
-            [0., 0., 1.]
-        ])
-
-        trans_to = Variator._trans(-center[0], -center[1])
-        trans_from = Variator._trans(center[0], center[1])
-
-        return np.matmul(np.matmul(trans_from, rotation), trans_to)
-
-    @staticmethod
-    def trans(dx, dy):
-        return np.array([
-            [1., 0., dx],
-            [0., 1., dy],
-            [0., 0., 1.]
-        ])
-
-    @staticmethod
-    def scale_matrix(sigma):
-        return np.array([
-            [sigma, 0., 0.],
-            [0., sigma, 0.],
-            [0., 0., 1.]
-        ])
-
-    @staticmethod
-    def scale(sigma, center):
-        scale = np.array([
-            [sigma, 0., 0.],
-            [0., sigma, 0.],
-            [0., 0., 1.]
-        ])
-
-        trans_to = Variator._trans(-center[0], -center[1])
-        trans_from = Variator._trans(center[0], center[1])
-
-        return np.matmul(np.matmul(trans_from, scale), trans_to)
-
     def apply(self, task, methods=METHODS, name=None):
         if name is not None:
             print(name)
@@ -289,17 +240,17 @@ class Variator:
             if 'rotate' in methods:
                 theta = self.rng_rotate()
                 transform_description['rotate'] = theta
-                rotation = Variator._rotate(theta, bld.center_utm)
+                rotation = AffineMx.rotate_around(theta, bld.center_utm)
 
             if 'trans' in methods:
                 trans_x, trans_y = self.rng_trans()
                 transform_description['trans'] = [trans_x, trans_y]
-                translation = Variator._trans(trans_x, trans_y)
+                translation = AffineMx.trans(trans_x, trans_y)
 
             if 'scale' in methods:
                 scale = self.rng_scale()
                 transform_description['scale'] = scale
-                scaling = Variator._scale(scale, bld.center_utm)
+                scaling = AffineMx.scale_around(scale, bld.center_utm)
 
             affine_matrix = np.matmul(np.matmul(rotation, translation), scaling)
 
@@ -357,7 +308,7 @@ def main(parsed_args):
     if parsed_args.variate:
         task_prefix_name = "var_task"
         task_generator = variated_task_generator(collection, parsed_args.results, parsed_args.shift,
-                                                 parsed_args.theta, parsed_args.scale, parsed_args.point_shift)
+                                                 parsed_args.theta, parsed_args.scale_around, parsed_args.point_shift)
     else:
         task_prefix_name = "task"
         task_generator = TaskGenerator(collection)
