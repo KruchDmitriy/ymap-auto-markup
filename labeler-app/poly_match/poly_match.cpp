@@ -74,7 +74,7 @@ namespace utils {
 
     AffineTransform grad_descent(const Polygon& poly_real, Polygon poly_pred,
                                 const AffineTransform& transform,
-                                int num_steps, double learning_rate) {
+                                int num_steps, const double learning_rate) {
         AffineTransform cum_trans = transform;
         poly_pred.transform(transform);
         for (int i = 0; i < num_steps; i++) {
@@ -84,24 +84,10 @@ namespace utils {
             AffineTransform cur_trans {0., 0., 0., 1.};
             cur_trans -= grad_direct * learning_rate;
             cur_trans -= grad_reverse * learning_rate;
-            // std::cout << "grad_dir " << grad_direct << std::endl;
-            // std::cout << "grad_rev " << grad_reverse << std::endl;
-            // std::cout << "trans " << cur_trans << std::endl;
 
             cum_trans.merge(cur_trans);
-            // std::cout << "scale " << cum_trans.scale << std::endl;
-            // std::cout << i << std::endl;
 
-            // std::cout << "cum_trans" << std::endl;
-            // std::cout << cum_trans.shift_x << " "
-            //           << cum_trans.shift_y << " "
-            //           << cum_trans.theta << " "
-            //           << cum_trans.scale << std::endl;
-
-             poly_pred.transform(cur_trans);
-//            poly_pred.rotate(cur_trans.theta);
-//            poly_pred.scale(cur_trans.scale);
-//            poly_pred.translate(cur_trans.shift_x, cur_trans.shift_y);
+            poly_pred.transform(cur_trans);
         }
 
         return cum_trans;
@@ -182,12 +168,11 @@ void Polygon::transform(const AffineTransform& transform) {
     for (Point& p: points) {
         double px = p.x;
         double py = p.y;
-        // p.x += transform.shift_x;
+
         p.x = cosT * transform.scale * px
             + sinT * transform.scale * py
             + transform.shift_x;
 
-        // p.y += transform.shift_y;
         p.y = -sinT * transform.scale * px
             + cosT * transform.scale * py
             + transform.shift_y;
@@ -261,7 +246,7 @@ AffineResult find_affine(Polygon poly_real, Polygon poly_pred, OptimizationParam
         double res = utils::residual(poly_real, tmp_poly);
 
         if (res < min_res) {
-            // std::cout << "min_res " << min_res << std::endl;
+            std::cout << "min_res " << min_res << std::endl;
             // std::cout << "shift_x " << transform.shift_x << std::endl;
             // std::cout << "shift_y " << transform.shift_y << std::endl;
             // std::cout << "theta " << transform.theta << std::endl;

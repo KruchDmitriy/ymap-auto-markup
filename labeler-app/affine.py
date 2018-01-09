@@ -7,8 +7,8 @@ class AffineMx:
         return np.matmul(
             np.matmul(
                 AffineMx.trans(shift[0], shift[1]),
-                AffineMx.rotate(theta)),
-                AffineMx.scale(scale)
+                AffineMx.scale(scale)),
+                AffineMx.rotate(theta)
         )
 
     @staticmethod
@@ -51,8 +51,8 @@ class AffineMx:
     @staticmethod
     def rotate_around(theta, center):
         rotation = np.array([
-            [np.cos(theta), -np.sin(theta), 0.],
-            [np.sin(theta), np.cos(theta), 0.],
+            [np.cos(theta), np.sin(theta), 0.],
+            [-np.sin(theta), np.cos(theta), 0.],
             [0., 0., 1.]
         ])
 
@@ -64,8 +64,8 @@ class AffineMx:
     @staticmethod
     def rotate2d(theta):
         return np.array([
-            [np.cos(theta), -np.sin(theta)],
-            [np.sin(theta), np.cos(theta)],
+            [np.cos(theta), np.sin(theta)],
+            [-np.sin(theta), np.cos(theta)],
         ])
 
     @staticmethod
@@ -79,11 +79,11 @@ class AffineMx:
 class PolyTransform:
     @staticmethod
     def rotate(poly, theta):
-        return np.matmul(poly, AffineMx.rotate2d(theta))
+        return np.matmul(poly, np.transpose(AffineMx.rotate2d(theta)))
 
     @staticmethod
     def scale(poly, sigma):
-        return np.matmul(poly, AffineMx.scale2d(sigma))
+        return np.matmul(poly, np.transpose(AffineMx.scale2d(sigma)))
 
     @staticmethod
     def translate(poly, dx, dy):

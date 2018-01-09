@@ -88,26 +88,22 @@ def get_test_poly():
     return poly
 
 def test():
-    # points = get_test_poly()
-    points = np.array([
-                [0, 0], [0, 1], [1, 1], [1, 0], [0, 0]
-            ], dtype=np.float64)
+    points = get_test_poly()
+    # points = np.array([
+    #             [0, 0], [0, 1], [1, 1], [1, 0], [0, 0]
+    #         ], dtype=np.float64)
     poly1 = np.array(points, dtype=np.float64)
 
     orig_theta = 0.4
     orig_scale = 1.2
 
-    # poly2 = PolyTransform.translate_vec(poly1, - get_poly_center(poly1))
     poly2 = PolyTransform.rotate(poly1, orig_theta)
     poly2 = PolyTransform.scale(poly2, orig_scale)
 
-    # poly1 = PolyTransform.translate_vec(poly1, -get_poly_center(poly1))
-    # poly2 = PolyTransform.translate_vec(poly2, -get_poly_center(poly2))
     draw_polys(poly1, poly2)
 
     result = find_affine(Polygon(poly1), Polygon(poly2),
-                         # OptimizationParams(0., 0.1, 0, 0.1, 1., 1.1, 1, 100, 0.01))
-                        OptimizationParams(0., 0.1, -np.pi, np.pi, 0.7, 1.3, 4, 10, 0.1))
+                         OptimizationParams(-0.1, 0.1, -np.pi, np.pi, 0.7, 1.3, 4, 80, 0.1))
     trans = result.transform
     print('theta ' + str(trans.theta))
     print('scale ' + str(trans.scale))
@@ -119,9 +115,9 @@ def test():
 
     poly2 = PolyTransform.translate_vec(poly2, -get_poly_center(poly2))
 
-    poly2 = PolyTransform.translate_vec(poly2, shift)
     poly2 = PolyTransform.rotate(poly2, theta)
     poly2 = PolyTransform.scale(poly2, scale)
+    poly2 = PolyTransform.translate_vec(poly2, shift)
 
     poly2 = PolyTransform.translate_vec(poly2, get_poly_center(poly1));
 
@@ -188,31 +184,30 @@ def test_grad_desc():
 
     for i in range(100):
         orig_theta = 0.1 * i + 2.
-        # orig_theta = 0.8
+
         print("orig_theta " + str(orig_theta))
         orig_scale = 1.2
         poly2 = PolyTransform.rotate(poly1, orig_theta)
         poly2 = PolyTransform.scale(poly2, orig_scale)
         draw_polys(poly1, poly2)
 
-        for j in range(10):
+        for j in range(100):
             transform = AffineTransform(0, 0, 0, 1)
-            transform = grad_descent(Polygon(poly1), Polygon(poly2), transform, 100, 0.01)
+            transform = grad_descent(Polygon(poly1), Polygon(poly2), transform, 10, 0.001)
             print(transform.shift_x, transform.shift_y, transform.theta, transform.scale)
 
-            # WARNING BAD TRANSFORMS!!!
             poly2 = PolyTransform.translate(poly2, transform.shift_x, transform.shift_y)
-            poly2 = PolyTransform.rotate(poly2, transform.theta)
             poly2 = PolyTransform.scale(poly2, transform.scale)
+            poly2 = PolyTransform.rotate(poly2, transform.theta)
             draw_polys(poly1, poly2)
 
 def test_trans_commutation():
     for i in range(1000):
-        a1 = np.random.rand(4)
+        a1 = np.random.rand(4) * 100
         mx1 = AffineMx.trans_from_params((a1[0], a1[1]), a1[2], a1[3])
         trans1 = AffineTransform(a1[0], a1[1], a1[2], a1[3])
 
-        a2 = np.random.rand(4)
+        a2 = np.random.rand(4) * 100
         mx2 = AffineMx.trans_from_params((a2[0], a2[1]), a2[2], a2[3])
         trans2 = AffineTransform(a2[0], a2[1], a2[2], a2[3])
 
@@ -222,30 +217,9 @@ def test_trans_commutation():
         mx_trans = AffineMx.trans_from_params((trans.shift_x, trans.shift_y),
             trans.theta, trans.scale)
 
-        # sinT = np.sin(a2[2])
-        # cosT = np.cos(a2[2])
-
-        # print(mx1)
-        # print(mx2)
-
-        # mx3 = np.array([
-        #     [np.cos(a1[2]) * a1[3], np.sin(a1[2]) * a1[3], a1[0]],
-        #     [-np.sin(a1[2]) * a1[3], np.cos(a1[2]) * a1[3], a1[1]],
-        #     [0., 0., 1.]]
-        #     )
-
-        # print(mx3)
-        # input()
-
-        # print(mx)
-        # print(mx_trans)
-        # print(cosT * a2[3] * a1[0] + sinT * a2[3] * a1[1])
-        # print(-sinT * a2[3] * a1[0] + cosT * a2[3] * a1[1])
-        # input()
-
         residual = np.sum((mx - mx_trans)** 2.)
-        print(residual)
-        if residual > 0.0001:
+        if residual > 1e-10:
+            print(residual)
             print(mx)
             print(mx_trans)
 
@@ -266,24 +240,20 @@ def test_trans():
         poly.transform(trans)
         points_poly = poly.get_points()
 
-        print(mx)
-        points_affine = np.vstack((points.transpose(), np.ones(10))).transpose()
-        print(points_affine)
-        points_poly_affine = np.vstack((points_poly.transpose(), np.ones(10))).transpose()
-        # input()
+        points_affine = np.vstack(
+                            (points.transpose(),
+                            np.ones(points.shape[0]))
+                        ).transpose()
 
-        points_after = points_affine * mx[:, 0] \
-                     + points_affine * mx[:, 1] \
-                     + points_affine * mx[:, 2]
-        print(points_after)
-        input()
+        points_after = np.matmul(points_affine, mx.transpose())
+        points_after = points_after[:,:-1]
 
-        residual = np.sum((points_poly_affine - points_after)** 2.)
-        print(residual)
+        residual = np.sum((points_poly - points_after)** 2.)
         if residual > 0.0001:
+            print(residual)
             print(points_poly_affine)
             print(points_after)
             input()
 
 if __name__ == '__main__':
-    test_trans()
+    test()
