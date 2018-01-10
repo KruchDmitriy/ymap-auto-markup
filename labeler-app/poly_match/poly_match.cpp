@@ -1,11 +1,12 @@
 #include <iostream>
 #include <limits>
 #include <iomanip>
-#include <cmath>
 #include "poly_match.hpp"
 
+#ifdef WITH_PYTHON
 namespace bp = boost::python;
 namespace np = boost::python::numpy;
+#endif
 
 namespace utils {
     Point rotate_point(Point point, double sinT, double cosT) {
@@ -92,26 +93,10 @@ namespace utils {
 
         return cum_trans;
     }
-}
 
-Polygon::Polygon(const np::ndarray& points) {
-    double* data_ = reinterpret_cast<double*>(points.get_data());
-    uint32_t length = points.shape(0);
-
-    for (uint32_t i = 0; i < length; i++) {
-        this->points.push_back({ data_[i * 2], data_[i * 2 + 1] });
+    double normalize_theta(double theta) {
+        return atan2(sin(theta), cos(theta));
     }
-
-    _center = {0, 0};
-
-    for (uint32_t i = 0; i < this->points.size() - 1; i++) {
-        const Point& point = this->points[i];
-        _center.x += point.x;
-        _center.y += point.y;
-    }
-
-    _center.x /= this->points.size() - 1;
-    _center.y /= this->points.size() - 1;
 }
 
 AffineTransform Polygon::grad(const Polygon& poly, bool is_direct) const {
@@ -257,7 +242,7 @@ AffineResult find_affine(Polygon poly_real, Polygon poly_pred, OptimizationParam
     return {{
             best_x,
             best_y,
-            best_theta, best_scale
+            utils::normalize_theta(best_theta), best_scale
         } , min_res };
 }
 
@@ -276,6 +261,7 @@ Polygon::Polygon(const std::vector<Point>& points) {
     _center.y /= this->points.size() - 1;
 }
 
+#ifdef WITH_PYTHON
 BOOST_PYTHON_MODULE(poly_match) {
     using namespace boost::python;
 
@@ -330,3 +316,4 @@ BOOST_PYTHON_MODULE(poly_match) {
         .add_property("transform", &AffineResult::transform)
         .add_property("residual", &AffineResult::residual);
 }
+#endif

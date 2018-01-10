@@ -1,11 +1,16 @@
+from sys import path
+path.append('..')
+path.append('./build')
+
 import utm
+import json
+import argparse
 import numpy as np
 from modeling import Model
-from poly_match.poly_match import find_affine, OptimizationParamsBuilder
+# from poly_match import find_affine, OptimizationParamsBuilder
 from affine import AffineMx
 
-
-def main(args):
+def parse_params(args):
     builder = OptimizationParamsBuilder()
 
     if min_shift is not None:
@@ -36,16 +41,29 @@ def main(args):
 
     params = builder.build()
 
+    return params
 
+def main(args):
+    with open(args.real, 'r') as f:
+        real_polys = json.load(f)
+
+    with open(args.gen, 'r') as f:
+        pred_polys = json.load(f)
+
+    assert(len(real_polys) == len(pred_polys))
+
+    opt_params = parse_params(args)
+    for real, pred in zip(real_polys, pred_polys):
+        transform = find_affine(Polygon(real), Polygon(pred), opt_params)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--real', required=True, help='path to file with list polygons '
+    parser.add_argument('--real', required=True, help='path to json file with list polygons '
                                                       '[poly1, poly2, poly3]')
-    parser.add_argument('--gen', required=True, help='path to file with list generated polygons '
+    parser.add_argument('--gen', required=True, help='path to json file with list generated polygons '
                                                      '[gen_poly1, gen_poly2, gen_poly3]'
-                                                     'gen_poly1 will be compared with poly1 e.t.c')
+                                                     'gen_poly1 will be compared with poly1 etc')
     parser.add_argument('--out', required=True, help='output file name')
 
     grid_group = parser.add_argument_group('optimization parameters for grid search')

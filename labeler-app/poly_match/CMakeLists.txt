@@ -1,15 +1,25 @@
 cmake_minimum_required(VERSION 3.0.2)
-set(proect_name poly_match)
-project(${proect_name})
+set(project_name poly_match)
+project(${project_name})
 
 set(CMAKE_CXX_FLAGS "-Wall")
 
-find_package(Boost 1.60 REQUIRED COMPONENTS python numpy)
-find_package(PythonLibs REQUIRED)
+if (WITH_PYTHON)
+    find_package(Boost 1.60 REQUIRED COMPONENTS python numpy)
+    find_package(PythonLibs REQUIRED)
 
-include_directories(PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${PYTHON_INCLUDE_PATH} ${Boost_INCLUDE_DIRS})
+    include_directories(PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+    include_directories(${PYTHON_INCLUDE_PATH} ${Boost_INCLUDE_DIRS})
+endif (WITH_PYTHON)
 
-add_library(${proect_name} SHARED poly_match.cpp poly_match.hpp)
-set_target_properties(${proect_name} PROPERTIES PREFIX "")
-target_link_libraries(${proect_name} ${Boost_LIBRARIES})
+add_library(${project_name} SHARED poly_match.cpp poly_match.hpp)
+set_target_properties(${project_name} PROPERTIES PREFIX "")
+
+add_executable(metric metric.cpp)
+target_link_libraries(metric ${project_name})
+
+if (WITH_PYTHON)
+    target_link_libraries(${project_name} ${Boost_LIBRARIES})
+    target_link_libraries(metric ${Boost_LIBRARIES})
+endif (WITH_PYTHON)
+

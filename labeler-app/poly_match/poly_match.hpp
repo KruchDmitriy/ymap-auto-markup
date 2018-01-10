@@ -2,13 +2,16 @@
 
 #include <vector>
 #include <iostream>
+#include <cmath>
 
+#ifdef WITH_PYTHON
 #include <boost/python/def.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/numpy.hpp>
 
 namespace bp = boost::python;
 namespace np = boost::python::numpy;
+#endif
 
 struct AffineTransform {
     double shift_x;
@@ -210,7 +213,6 @@ private:
     std::vector<Point> points;
     Point _center;
 public:
-    Polygon(const np::ndarray& points);
     Polygon(const std::vector<Point>& points);
     double distance(const Point& p) const;
     void translate(double dx, double dy);
@@ -225,11 +227,34 @@ public:
         return points;
     }
 
+    #ifdef WITH_PYTHON
+    Polygon::Polygon(const np::ndarray& points) {
+        double* data_ = reinterpret_cast<double*>(points.get_data());
+        uint32_t length = points.shape(0);
+
+        for (uint32_t i = 0; i < length; i++) {
+            this->points.push_back({ data_[i * 2], data_[i * 2 + 1] });
+        }
+
+        _center = {0, 0};
+
+        for (uint32_t i = 0; i < this->points.size() - 1; i++) {
+            const Point& point = this->points[i];
+            _center.x += point.x;
+            _center.y += point.y;
+        }
+
+        _center.x /= this->points.size() - 1;
+        _center.y /= this->points.size() - 1;
+    }
+
     np::ndarray as_np_array() const {
         bp::tuple shape = bp::make_tuple(points.size(), 2);
         bp::tuple stride = bp::make_tuple(sizeof(double) * 2, sizeof(double));
         return np::from_data(points.data(), np::dtype::get_builtin<double>(),
             shape, stride, bp::object());
     }
+    #endif
+
 };
 
