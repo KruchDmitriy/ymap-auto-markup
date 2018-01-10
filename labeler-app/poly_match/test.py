@@ -1,4 +1,7 @@
-import utm
+from sys import path
+path.append('../')
+path.append('./build/')
+
 import numpy as np
 from matplotlib import pyplot as plt
 from poly_match import Polygon, Point, Edge, distance, grad_descent, \
@@ -27,7 +30,7 @@ def test_rotate():
 
     points = PolyTransform.rotate(points, np.pi / 4)
 
-    print(poly.get_points())
+    print(poly.as_np_array())
     print(points)
 
 def get_test_poly():
@@ -239,7 +242,7 @@ def test_trans():
         poly = Polygon(points)
 
         poly.transform(trans)
-        points_poly = poly.get_points()
+        points_poly = poly.as_np_array()
 
         points_affine = np.vstack(
                             (points.transpose(),

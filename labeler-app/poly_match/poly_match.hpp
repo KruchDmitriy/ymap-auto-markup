@@ -135,7 +135,7 @@ struct OptimizationParams {
     double min_shift, max_shift;
     double min_theta, max_theta;
     double min_scale, max_scale;
-    int steps;
+    int grid_step;
     int desc_num_steps;
     double desc_lr;
 
@@ -143,14 +143,14 @@ struct OptimizationParams {
         double min_shift, double max_shift,
         double min_theta, double max_theta,
         double min_scale, double max_scale,
-        int steps, int desc_num_steps, double desc_lr)
+        int grid_step, int desc_num_steps, double desc_lr)
     : min_shift(min_shift)
     , max_shift(max_shift)
     , min_theta(min_theta)
     , max_theta(max_theta)
     , min_scale(min_scale)
     , max_scale(max_scale)
-    , steps(steps)
+    , grid_step(grid_step)
     , desc_num_steps(desc_num_steps)
     , desc_lr(desc_lr) {}
 };
@@ -188,8 +188,8 @@ public:
         params.max_scale = max_scale;
     }
 
-    void set_grid_size(int steps) {
-        params.steps = steps;
+    void set_grid_step(int grid_step) {
+        params.grid_step = grid_step;
     }
 
     void set_desc_num_steps(int desc_num_steps) {
@@ -225,7 +225,7 @@ public:
         return points;
     }
 
-    np::ndarray get_np_points() const {
+    np::ndarray as_np_array() const {
         bp::tuple shape = bp::make_tuple(points.size(), 2);
         bp::tuple stride = bp::make_tuple(sizeof(double) * 2, sizeof(double));
         return np::from_data(points.data(), np::dtype::get_builtin<double>(),

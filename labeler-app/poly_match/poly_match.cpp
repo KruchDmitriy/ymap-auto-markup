@@ -215,15 +215,15 @@ AffineResult find_affine(Polygon poly_real, Polygon poly_pred, OptimizationParam
 
     const double min_shift = opt_params.min_shift;
     const double max_shift = opt_params.max_shift;
-    const double shift_step = (max_shift - min_shift) / opt_params.steps;
+    const double shift_step = (max_shift - min_shift) / opt_params.grid_step;
 
     const double min_theta = opt_params.min_theta;
     const double max_theta = opt_params.max_theta;
-    const double theta_step = (max_theta - min_theta) / opt_params.steps;
+    const double theta_step = (max_theta - min_theta) / opt_params.grid_step;
 
     const double min_scale = opt_params.min_scale;
     const double max_scale = opt_params.max_scale;
-    const double scale_step = (max_scale - min_scale) / opt_params.steps;
+    const double scale_step = (max_scale - min_scale) / opt_params.grid_step;
 
     double best_theta = 0.;
     double best_scale = 1.;
@@ -301,7 +301,7 @@ BOOST_PYTHON_MODULE(poly_match) {
         .def("scale"    , &Polygon::scale)
         .def("center"   , &Polygon::center)
         .def("transform", &Polygon::transform)
-        .def("get_points", &Polygon::get_np_points);
+        .def("as_np_array", &Polygon::as_np_array);
 
     class_<OptimizationParamsBuilder>("OptimizationParamsBuilder", init<>())
         .def("set_min_shift", &OptimizationParamsBuilder::set_min_shift)
@@ -310,7 +310,7 @@ BOOST_PYTHON_MODULE(poly_match) {
         .def("set_max_theta", &OptimizationParamsBuilder::set_max_theta)
         .def("set_min_scale", &OptimizationParamsBuilder::set_min_scale)
         .def("set_max_scale", &OptimizationParamsBuilder::set_max_scale)
-        .def("set_grid_size", &OptimizationParamsBuilder::set_grid_size)
+        .def("set_grid_step", &OptimizationParamsBuilder::set_grid_step)
         .def("set_desc_num_steps", &OptimizationParamsBuilder::set_desc_num_steps)
         .def("set_learn_rate", &OptimizationParamsBuilder::set_learn_rate)
         .def("build", &OptimizationParamsBuilder::build);
