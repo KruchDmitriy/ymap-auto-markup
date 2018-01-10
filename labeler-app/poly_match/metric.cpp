@@ -157,7 +157,7 @@ static ParsedArgs* parse_params(int argc, char** argv) {
 
 int main(int argc, char** argv) {
     ParsedArgs* args = parse_params(argc, argv);
-    if (args == null) {
+    if (args == nullptr) {
         return 1;
     }
 }

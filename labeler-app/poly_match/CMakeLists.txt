@@ -15,11 +15,11 @@ endif (WITH_PYTHON)
 add_library(${project_name} SHARED poly_match.cpp poly_match.hpp)
 set_target_properties(${project_name} PROPERTIES PREFIX "")
 
-add_executable(metric metric.cpp)
-target_link_libraries(metric ${project_name})
+add_executable(ymaprica metric.cpp)
+target_link_libraries(ymaprica ${project_name})
 
 if (WITH_PYTHON)
     target_link_libraries(${project_name} ${Boost_LIBRARIES})
-    target_link_libraries(metric ${Boost_LIBRARIES})
+    target_link_libraries(ymaprica ${Boost_LIBRARIES})
 endif (WITH_PYTHON)
 
