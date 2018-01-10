@@ -19,7 +19,7 @@ namespace utils {
     AffineTransform grad_affine(Point p1, Point p2) {
         double g_x = (p2.x - p1.x);
         double g_y = (p2.y - p1.y);
-        double g_theta = (p2.x - p1.x) * p2.y - (p2.y - p1.y) * p2.x;
+        double g_theta = ((p2.x - p1.x) * p2.y - (p2.y - p1.y) * p2.x);
         double g_scale = (p2.x - p1.x) * p2.x + (p2.y - p1.y) * p2.y;
         return { g_x, g_y, g_theta, g_scale };
     }
@@ -72,22 +72,22 @@ namespace utils {
         return sum_dist / (points1.size() + points2.size() - 2.);
     }
 
-    AffineTransform grad_descent(const Polygon& poly_real, Polygon poly_pred,
+    AffineTransform grad_descent(Polygon poly_real, const Polygon& poly_pred,
                                 const AffineTransform& transform,
-                                int num_steps, const double learning_rate) {
+                                const int num_steps, const double learning_rate) {
         AffineTransform cum_trans = transform;
-        poly_pred.transform(transform);
+        poly_real.transform(transform);
         for (int i = 0; i < num_steps; i++) {
-            AffineTransform grad_direct = poly_pred.grad(poly_real, true);
-            AffineTransform grad_reverse = poly_real.grad(poly_pred, false);
+            AffineTransform grad_direct = poly_real.grad(poly_pred, true);
+            AffineTransform grad_reverse = poly_pred.grad(poly_real, false);
 
             AffineTransform cur_trans {0., 0., 0., 1.};
-            cur_trans -= grad_direct * learning_rate;
-            cur_trans -= grad_reverse * learning_rate;
+            cur_trans -= grad_direct * learning_rate / log(2. + i);
+            cur_trans -= grad_reverse * learning_rate / log(2. + i);
 
             cum_trans.merge(cur_trans);
 
-            poly_pred.transform(cur_trans);
+            poly_real.transform(cur_trans);
         }
 
         return cum_trans;
@@ -240,18 +240,12 @@ AffineResult find_affine(Polygon poly_real, Polygon poly_pred, OptimizationParam
         transform = utils::grad_descent(poly_real, poly_pred, transform,
             opt_params.desc_num_steps, opt_params.desc_lr);
 
-        Polygon tmp_poly = poly_pred;
+        Polygon tmp_poly = poly_real;
         tmp_poly.transform(transform);
 
-        double res = utils::residual(poly_real, tmp_poly);
+        double res = utils::residual(tmp_poly, poly_pred);
 
         if (res < min_res) {
-            std::cout << "min_res " << min_res << std::endl;
-            // std::cout << "shift_x " << transform.shift_x << std::endl;
-            // std::cout << "shift_y " << transform.shift_y << std::endl;
-            // std::cout << "theta " << transform.theta << std::endl;
-            // std::cout << "scale " << transform.scale << std::endl;
-
             min_res = res;
             best_theta = transform.theta;
             best_scale = transform.scale;
@@ -282,111 +276,6 @@ Polygon::Polygon(const std::vector<Point>& points) {
     _center.y /= this->points.size() - 1;
 }
 
-void test() {
-    using namespace std;
-    vector<Point> vec1 = { {0, 0}, {0, 1}, {1, 1}, {1, 0}, {0, 0} };
-    Polygon poly1(vec1);
-
-    vector<Point> vec2 = { {0, 0}, {0, 2}, {1, 2}, {1, 0}, {0, 0} };
-    Polygon poly2(vec2);
-
-    vector<Point> vec3 = {
-        { 28.999129892427362, 41.04482021771477 },
-        { 28.999315222207333, 41.044766761609694 },
-        { 28.999272787086380, 41.04469812176112 },
-        { 28.999263060833204, 41.04466765852509 },
-        { 28.999179680122907, 41.04469798907681 },
-        { 28.999170088945682, 41.04469396833088 },
-        { 28.999129573604808, 41.04470336899118 },
-        { 28.999151143613844, 41.04475236542376 },
-        { 28.999131312530217, 41.04475808346705 },
-        { 28.999142308431317, 41.04478318419424 },
-        { 28.999119178012540, 41.04478657050163 },
-        { 28.999129892427362, 41.04482021771477 }
-    };
-    Polygon poly3(vec3);
-
-    vector<Point> vec4 = {
-        { 699190.57115417, 3209614.5956814  },
-        { 699180.98277655, 3209633.49578724 },
-        { 699175.48857823, 3209627.43942008 },
-        { 699172.82875896, 3209625.73641586 },
-        { 699177.73971665, 3209617.36741134 },
-        { 699177.59063786, 3209616.24421831 },
-        { 699179.46947686, 3209612.06357219 },
-        { 699183.60338552, 3209615.44358092 },
-        { 699184.62919364, 3209613.42114555 },
-        { 699186.74830375, 3209615.14683701 },
-        { 699187.63264045, 3209612.7177504  },
-        { 699190.57115417, 3209614.5956814  },
-    };
-    Polygon poly4(vec4);
-
-    for (const Point& p1: poly1.get_points()) {
-        cout << p1.x << " " << p1.y << endl;
-    }
-
-    cout << utils::residual(poly1, poly1) << endl;
-    cout << utils::residual(poly1, poly2) << endl;
-    cout << utils::residual(poly2, poly1) << endl;
-
-    AffineResult result = find_affine(poly1, poly2, {
-        -1., 1.,
-        -M_PI, M_PI,
-        0.7, 1.3,
-        10,
-        5,
-        0.001
-    });
-
-    AffineTransform transform = result.transform;
-
-    cout << "shift_x " << transform.shift_x << endl
-        << "shift_y " << transform.shift_y << endl
-        << "theta " << transform.theta << endl
-        << "scale " << transform.scale << endl
-        << "residual " << result.residual << endl;
-
-    cout << utils::residual(poly3, poly4) << endl;
-
-    result = find_affine(poly3, poly4, {
-        -1., 1.,
-        -M_PI, M_PI,
-        0.7, 1.3,
-        10,
-        5,
-        0.001
-    });
-
-    transform = result.transform;
-
-    cout << "shift_x " << transform.shift_x << endl
-        << "shift_y " << transform.shift_y << endl
-        << "theta " << transform.theta << endl
-        << "scale " << transform.scale << endl
-        << "residual " << result.residual << endl;
-}
-
-void test_grad_desc() {
-    std::vector<Point> points = {{-1, -1}, {-1, 1}, {1, 1}, {1, -1},{-1, -1}};
-    Polygon poly1 = Polygon(points);
-
-    double orig_theta = 0.2;
-    double orig_scale = 1.2;
-    Polygon poly2 = poly1;
-    poly2.rotate(orig_theta);
-    poly2.scale(orig_scale);
-
-    for (int i = 0; i < 100; i++) {
-        auto transform = AffineTransform(0, 0, 0, 1);
-        transform = utils::grad_descent(Polygon(poly1), Polygon(poly2), transform, 10, 0.01);
-
-        poly2.scale(transform.scale);
-        poly2.rotate(transform.theta);
-        poly2.translate(transform.shift_x, transform.shift_y);
-    }
-}
-
 BOOST_PYTHON_MODULE(poly_match) {
     using namespace boost::python;
 
@@ -401,7 +290,6 @@ BOOST_PYTHON_MODULE(poly_match) {
         .add_property("second", &Edge::second);
 
     def("find_affine", find_affine);
-    def("test", test);
     def("residual", utils::residual);
     def("distance", utils::distance);
     def("grad_descent", utils::grad_descent);
@@ -414,6 +302,18 @@ BOOST_PYTHON_MODULE(poly_match) {
         .def("center"   , &Polygon::center)
         .def("transform", &Polygon::transform)
         .def("get_points", &Polygon::get_np_points);
+
+    class_<OptimizationParamsBuilder>("OptimizationParamsBuilder", init<>())
+        .def("set_min_shift", &OptimizationParamsBuilder::set_min_shift)
+        .def("set_max_shift", &OptimizationParamsBuilder::set_max_shift)
+        .def("set_min_theta", &OptimizationParamsBuilder::set_min_theta)
+        .def("set_max_theta", &OptimizationParamsBuilder::set_max_theta)
+        .def("set_min_scale", &OptimizationParamsBuilder::set_min_scale)
+        .def("set_max_scale", &OptimizationParamsBuilder::set_max_scale)
+        .def("set_grid_size", &OptimizationParamsBuilder::set_grid_size)
+        .def("set_desc_num_steps", &OptimizationParamsBuilder::set_desc_num_steps)
+        .def("set_learn_rate", &OptimizationParamsBuilder::set_learn_rate)
+        .def("build", &OptimizationParamsBuilder::build);
 
     class_<OptimizationParams>("OptimizationParams",
         init<double, double, double, double, double, double, int, int, double>());
@@ -429,9 +329,4 @@ BOOST_PYTHON_MODULE(poly_match) {
     class_<AffineResult>("AffineResult")
         .add_property("transform", &AffineResult::transform)
         .add_property("residual", &AffineResult::residual);
-}
-
-int main() {
-    test_grad_desc();
-    return 0;
 }

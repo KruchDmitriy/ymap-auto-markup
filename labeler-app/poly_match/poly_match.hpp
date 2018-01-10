@@ -155,6 +155,56 @@ struct OptimizationParams {
     , desc_lr(desc_lr) {}
 };
 
+
+struct OptimizationParamsBuilder {
+private:
+    OptimizationParams params;
+public:
+    OptimizationParamsBuilder()
+    : params(-0.1, 0.1, -M_PI, M_PI, 0.7, 1.3, 4, 10, 1)
+    {}
+
+    void set_min_shift(double min_shift) {
+        params.min_shift = min_shift;
+    }
+
+    void set_max_shift(double max_shift) {
+        params.max_shift = max_shift;
+    }
+
+    void set_min_theta(double min_theta) {
+        params.min_theta = min_theta;
+    }
+
+    void set_max_theta(double max_theta) {
+        params.max_theta = max_theta;
+    }
+
+    void set_min_scale(double min_scale) {
+        params.min_scale = min_scale;
+    }
+
+    void set_max_scale(double max_scale) {
+        params.max_scale = max_scale;
+    }
+
+    void set_grid_size(int steps) {
+        params.steps = steps;
+    }
+
+    void set_desc_num_steps(int desc_num_steps) {
+        params.desc_num_steps = desc_num_steps;
+    }
+
+    void set_learn_rate(double rate) {
+        params.desc_lr = rate;
+    }
+
+    OptimizationParams build() {
+        return params;
+    }
+};
+
 class Polygon {
 private:
     std::vector<Point> points;
