@@ -9,3 +9,4 @@ preprocessed-data/*
 tmp/*
 *.so
 */.idea/*
+labeler-app/poly_match/build/*
