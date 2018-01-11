@@ -21,7 +21,6 @@ def load_data(path_to_stat):
     for bld in bld_to_check:
         for task_id in bld_to_check[bld]:
             task = bld_to_check[bld][task_id]
-            # x = np.eye(3)
             x = np.zeros(4)
             point_shift_mean = 0
 
@@ -29,24 +28,18 @@ def load_data(path_to_stat):
                 transforms = task["meta"]["transform"]
                 for trans in transforms:
                     if trans == "trans":  # translate
-                        # x = np.matmul(x, AffineMx.trans(transforms["trans"][0],
-                        #                                 transforms["trans"][1]))
                         x[0] = transforms["trans"][0]
                         x[1] = transforms["trans"][1]
                     elif trans == "rotate":
-                        # x = np.matmul(x, AffineMx.rotate(transforms["rotate"]))
                         x[2] = transforms["rotate"]
                     elif trans == "scale":
-                        # x = np.matmul(x, AffineMx.scale(transforms["scale"]))
                         x[3] = 1. - transforms["scale"]
                     elif trans == "point_shift":
                         sqrs = np.square(transforms["point_shift"])
                         point_shift_mean = np.mean(np.sqrt(sqrs[:, 0] + sqrs[:, 1]))
 
-            # x = x.reshape(9)
             x = np.abs(x)
             x = np.hstack((x, point_shift_mean))
-            # print(x)
 
             if task["meta"] == "original":
                 # if we know that all original markup is good

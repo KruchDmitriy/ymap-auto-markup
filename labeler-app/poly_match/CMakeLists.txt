@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.0.2)
 set(project_name poly_match)
 project(${project_name})
 
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "-Wall")
-add_definitions(-DWITH_PYTHON)
+option(WITH_PYTHON "Build with python interface" OFF)
 
 if (WITH_PYTHON)
     find_package(Boost 1.60 REQUIRED COMPONENTS python numpy)
