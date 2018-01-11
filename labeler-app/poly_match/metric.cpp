@@ -160,7 +160,7 @@ class LinearModel {
     std::vector<double> weights;
 public:
     LinearModel() {
-        std::ifstream model_file("../../data/linear.params");
+        std::ifstream model_file("../data/linear.params");
         double weight;
         while (model_file >> weight) {
             weights.push_back(weight);
@@ -171,11 +171,11 @@ public:
 
     double predict(const AffineResult& result) const {
         AffineTransform transform = result.transform;
-        double sum = weights[0] * transform.shift_x
-                   + weights[1] * transform.shift_y
-                   + weights[2] * transform.theta
-                   + weights[3] * transform.scale
-                   + weights[4] * result.residual
+        double sum = weights[0] * abs(transform.shift_x)
+                   + weights[1] * abs(transform.shift_y)
+                   + weights[2] * abs(transform.theta)
+                   + weights[3] * abs(1. - transform.scale)
+                   + weights[4] * abs(result.residual)
                    + weights[5];
         return 1. / (1. + exp(-sum));
     }

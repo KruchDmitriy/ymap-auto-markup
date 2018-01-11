@@ -1,3 +1,4 @@
+import os.path
 import json
 import numpy as np
 import math
@@ -86,18 +87,23 @@ class AbstractModel:
         self.clf.fit(X, y)
         self.perplexity = calc_perplexity(self.clf, X, y)
 
-    def save(self, path):
+    def save(self, path=None):
         if path is None:
             path = self.DEFAULT_PATH_TO_MODEL
         pickle.dump(self.clf, open(path, "wb"))
 
-    def load(self, path):
+    def load(self, path=None):
         if path is None:
             path = self.DEFAULT_PATH_TO_MODEL
-        try:
-            self.clf = pickle.load(open(path, "rb"))
-        except FileNotFoundError:
-            print("File with xgb model not found, please run modeling.py --fit")
+
+        if not os.path.isfile(path):
+            raise FileNotFoundError("File with model not found, check path or run modeling.py --fit")
+
+        self.clf = pickle.load(open(path, "rb"))
+
+
+    def predict_proba(self, x):
+        return self.clf.predict_proba([x])[0][1]
 
     def predict_probas(self, X):
         return self.clf.predict_proba(X)
@@ -138,7 +144,7 @@ class LinearModel(AbstractModel):
         self.clf = LogisticRegression()
         self.perplexity = None
 
-    def save(self, path):
+    def save(self, path=None):
         super().save(path)
         if path is None:
             path = "data/linear.params"

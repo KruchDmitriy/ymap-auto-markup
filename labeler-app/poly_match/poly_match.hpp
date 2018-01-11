@@ -231,7 +231,7 @@ public:
     }
 
     #ifdef WITH_PYTHON
-    Polygon::Polygon(const np::ndarray& points) {
+    Polygon(const np::ndarray& points) {
         double* data_ = reinterpret_cast<double*>(points.get_data());
         uint32_t length = points.shape(0);
 
