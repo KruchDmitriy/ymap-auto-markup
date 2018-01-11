@@ -3,11 +3,13 @@
 #include <fstream>
 #include "poly_match.hpp"
 #include "3rd-party/json.hpp"
+#include "3rd-party/utm/utm.h"
 
 enum Args {
     HELP,
     REAL,
     GEN,
+    MODEL,
     MIN_SHIFT,
     MAX_SHIFT,
     MIN_THETA,
@@ -21,17 +23,17 @@ enum Args {
 
 static void small_help() {
     std::cout <<
-    "usage: ./metric [-h] --real REAL --gen GEN [--min_shift MIN_SHIFT]" << std::endl <<
+    "usage: ./metric [-h] --real REAL --gen GEN --model MODEL [--min_shift MIN_SHIFT]" << std::endl <<
     "             [--max_shift MAX_SHIFT] [--min_theta MIN_THETA]" << std::endl <<
     "             [--max_theta MAX_THETA] [--min_scale MIN_SCALE]" << std::endl <<
     "             [--max_scale MAX_SCALE] [--grid_step GRID_STEP]" << std::endl <<
     "             [--desc_num_steps DESC_NUM_STEPS] [--learn_rate LEARN_RATE]" << std::endl <<
-    "./metric: error: the following arguments are required: --real, --gen" << std::endl;
+    "./metric: error: the following arguments are required: --real, --gen, --model" << std::endl;
 }
 
 static void help() {
     std::cout <<
-    "usage: metric.py [-h] --real REAL --gen GEN [--min_shift MIN_SHIFT]" << std::endl <<
+    "usage: metric.py [-h] --real REAL --gen GEN --model MODEL [--min_shift MIN_SHIFT]" << std::endl <<
     "             [--max_shift MAX_SHIFT] [--min_theta MIN_THETA]" << std::endl <<
     "             [--max_theta MAX_THETA] [--min_scale MIN_SCALE]" << std::endl <<
     "             [--max_scale MAX_SCALE] [--grid_step GRID_STEP]" << std::endl <<
@@ -41,7 +43,8 @@ static void help() {
     "  --real REAL           path to json file with list polygons [poly1, poly2, poly3]" << std::endl <<
     "  --gen GEN             path to json file with list generated polygons [gen_poly1," << std::endl <<
     "                        gen_poly2, gen_poly3]gen_poly1 will be compared with" << std::endl <<
-    "                        poly1 etc" << std::endl << std::endl <<
+    "                        poly1 etc" << std::endl <<
+    "  --model MODEL         path to model (from modeling.py, should be in data/linear.param)" << std::endl << std::endl <<
     "optimization parameters for grid search:" << std::endl <<
     "  --min_shift MIN_SHIFT" << std::endl <<
     "  --max_shift MAX_SHIFT" << std::endl <<
@@ -58,11 +61,13 @@ static void help() {
 struct ParsedArgs {
     char* file_real;
     char* file_gen;
+    char* file_model;
     OptimizationParams params;
 
-    ParsedArgs(char* file_real, char* file_gen, OptimizationParams params)
+    ParsedArgs(char* file_real, char* file_gen, char* file_model, OptimizationParams params)
     : file_real(file_real)
     , file_gen(file_gen)
+    , file_model(file_model)
     , params(params) {}
 };
 
@@ -71,6 +76,7 @@ static ParsedArgs* parse_params(int argc, char** argv) {
         {"-h", HELP}, {"--help", HELP},
         {"--real", REAL},
         {"--gen", GEN},
+        {"--model", MODEL},
         {"--min_shift", MIN_SHIFT},
         {"--max_shift", MAX_SHIFT},
         {"--min_theta", MIN_THETA},
@@ -86,6 +92,7 @@ static ParsedArgs* parse_params(int argc, char** argv) {
     int required_completed = 0;
     char* file_real;
     char* file_gen;
+    char* file_model;
 
     for (int i = 1; i < argc; i += 2) {
         switch (mapping[argv[i]]) {
@@ -98,6 +105,10 @@ static ParsedArgs* parse_params(int argc, char** argv) {
                 break;
             case GEN:
                 file_gen = argv[i + 1];
+                required_completed++;
+                break;
+            case MODEL:
+                file_model = argv[i + 1];
                 required_completed++;
                 break;
             case MIN_SHIFT: {
@@ -148,19 +159,24 @@ static ParsedArgs* parse_params(int argc, char** argv) {
         }
     }
 
-    if (required_completed < 2) {
+    if (required_completed < 3) {
         small_help();
         return nullptr;
     }
 
-    return new ParsedArgs(file_real, file_gen, builder.build());
+    return new ParsedArgs(file_real, file_gen, file_model, builder.build());
 }
 
 class LinearModel {
     std::vector<double> weights;
 public:
-    LinearModel() {
-        std::ifstream model_file("../data/linear.params");
+    LinearModel(char* model_file_path) {
+        std::ifstream model_file(model_file_path);
+
+        if (!model_file) {
+            throw std::logic_error("File with model not found (should be in data/linear.param)");
+        }
+
         double weight;
         while (model_file >> weight) {
             weights.push_back(weight);
@@ -188,6 +204,33 @@ double calc_metric(const Polygon& poly_real, const Polygon& poly_gen,
     return model.predict(result);
 }
 
+void convert_coords_utm(double lat, double lon, double* east, double* north) {
+    long zone;
+    char hemisphere;
+
+    lat *= M_PI / 180.;
+    lon *= M_PI / 180.;
+
+    long error = Convert_Geodetic_To_UTM(lat, lon, &zone, &hemisphere, east, north);
+    if (error != UTM_NO_ERROR) {
+        std::cout << error << std::endl;
+        std::cout << *east << " " << *north << std::endl;
+        throw std::logic_error(std::string("Cannot convert latlon coordinates ")
+            + std::to_string(lat) + " " + std::to_string(lon) + " to utm");
+    }
+}
+
+Polygon points_to_poly(nlohmann::json& points) {
+    for (uint32_t i = 0; i < points.size(); i++) {
+        double east, north;
+        convert_coords_utm(points[i][1], points[i][0], &east, &north);
+        points[i][0] = north;
+        points[i][1] = east;
+    }
+
+    return Polygon(points);
+}
+
 int main(int argc, char** argv) {
     using json = nlohmann::json;
 
@@ -198,6 +241,15 @@ int main(int argc, char** argv) {
 
     std::ifstream file_real(args->file_real);
     std::ifstream file_gen(args->file_gen);
+
+    if (!file_real) {
+        throw std::logic_error(std::string("File ") + args->file_real + " not found");
+    }
+
+    if (!file_gen) {
+        throw std::logic_error(std::string("File ") + args->file_gen + " not found");
+    }
+
     json real, gen;
     file_real >> real;
     file_gen >> gen;
@@ -207,11 +259,12 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    LinearModel model;
+    LinearModel model(args->file_model);
 
     for (uint32_t i = 0; i < real.size(); i++) {
-        std::cout << calc_metric(Polygon(real[i]), Polygon(gen[i]),
-                                 args->params, model) << std::endl;
+        Polygon real_poly = points_to_poly(real[i]);
+        Polygon gen_poly = points_to_poly(gen[i]);
+        std::cout << calc_metric(real_poly, gen_poly, args->params, model) << std::endl;
     }
 
     delete args;

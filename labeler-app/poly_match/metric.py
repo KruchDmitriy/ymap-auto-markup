@@ -43,6 +43,18 @@ def parse_params(args):
 
     return params
 
+def points_to_poly(points):
+    np_points = np.zeros((len(points), 2))
+    for i, point in enumerate(points):
+        utm_center = utm.from_latlon(longitude=point[0],
+                                     latitude=point[1])
+        np_points[i][0] = utm_center[1]
+        np_points[i][1] = utm_center[0]
+
+    print(np_points)
+
+    return Polygon(np_points)
+
 def main(args):
     with open(args.real, 'r') as f:
         real_polys = json.load(f)
@@ -54,14 +66,22 @@ def main(args):
 
     opt_params = parse_params(args)
     for real, pred in zip(real_polys, pred_polys):
-        real_poly = Polygon(np.array(real))
-        pred_poly = Polygon(np.array(pred))
+        real_poly = points_to_poly(real)
+        pred_poly = points_to_poly(pred)
         result = find_affine(real_poly, pred_poly, opt_params)
         model = LinearModel()
-        model.load('../data/linear.model')
+        model.load(args.model)
 
         transform = result.transform
         residual = result.residual
+
+        print((
+                transform.shift_x,
+                transform.shift_y,
+                transform.theta,
+                1. - transform.scale,
+                residual))
+
         x = np.abs(np.array((
                 transform.shift_x,
                 transform.shift_y,
@@ -78,6 +98,7 @@ if __name__ == '__main__':
     parser.add_argument('--gen', required=True, help='path to json file with list generated polygons '
                                                      '[gen_poly1, gen_poly2, gen_poly3]'
                                                      'gen_poly1 will be compared with poly1 etc')
+    parser.add_argument('--model', required=True, help='path to model (from modeling.py, should be in data/linear.param)')
 
     grid_group = parser.add_argument_group('optimization parameters for grid search')
     grid_group.add_argument('--min_shift', type=float)

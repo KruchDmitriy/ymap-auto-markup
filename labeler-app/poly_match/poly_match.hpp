@@ -165,7 +165,7 @@ private:
     OptimizationParams params;
 public:
     OptimizationParamsBuilder()
-    : params(-0.1, 0.1, -M_PI, M_PI, 0.7, 1.3, 4, 10, 1)
+    : params(-0.1, 0.1, -M_PI, M_PI, 0.7, 1.3, 4, 10, 0.01)
     {}
 
     void set_min_shift(double min_shift) {
@@ -258,7 +258,6 @@ public:
             shape, stride, bp::object());
     }
     #endif
-
 };
 
 AffineResult find_affine(Polygon poly_real, Polygon poly_pred, const OptimizationParams& opt_params);
