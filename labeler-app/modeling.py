@@ -138,6 +138,16 @@ class LinearModel(AbstractModel):
         self.clf = LogisticRegression()
         self.perplexity = None
 
+    def save(self, path):
+        super().save(path)
+        if path is None:
+            path = "data/linear.params"
+
+        with open(path, "w") as f:
+            for coef in self.clf.coef_[0]:
+                f.write(str(coef) + ' ')
+            f.write(str(self.clf.intercept_[0]))
+
 
 def calc_perplexity(model, X, y):
     pred = np.zeros(X.shape[0])
@@ -163,7 +173,7 @@ def main(args):
         print("Model perplexity " + str(model.perplexity))
 
         if args.model_type == "linear":
-            print('coeffs' + str(model.clf.coef_))
+            print('coeffs' + str(model.clf.coef_) + ' ' + str(model.clf.intercept_))
     elif args.test:
         if args.model_type == "linear":
             model = LinearModel()

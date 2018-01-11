@@ -191,7 +191,7 @@ Point Polygon::center() const {
     return _center;
 }
 
-AffineResult find_affine(Polygon poly_real, Polygon poly_pred, OptimizationParams opt_params) {
+AffineResult find_affine(Polygon poly_real, Polygon poly_pred, const OptimizationParams& opt_params) {
     Point center1 = poly_real.center();
     Point center2 = poly_pred.center();
 
@@ -246,9 +246,7 @@ AffineResult find_affine(Polygon poly_real, Polygon poly_pred, OptimizationParam
         } , min_res };
 }
 
-Polygon::Polygon(const std::vector<Point>& points) {
-    this->points = points;
-
+void Polygon::calc_center() {
     _center = {0, 0};
 
     for (uint32_t i = 0; i < this->points.size() - 1; i++) {
@@ -259,6 +257,19 @@ Polygon::Polygon(const std::vector<Point>& points) {
 
     _center.x /= this->points.size() - 1;
     _center.y /= this->points.size() - 1;
+}
+
+Polygon::Polygon(const std::vector<Point>& points) {
+    this->points = points;
+    calc_center();
+}
+
+Polygon::Polygon(nlohmann::json& json) {
+    points = std::vector<Point>(json.size());
+    for (uint32_t i = 0; i < json.size(); i++) {
+        points[i] = { json[i][0], json[i][1] };
+    }
+    calc_center();
 }
 
 #ifdef WITH_PYTHON

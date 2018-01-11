@@ -1,6 +1,8 @@
 #include <iostream>
 #include <unordered_map>
+#include <fstream>
 #include "poly_match.hpp"
+#include "3rd-party/json.hpp"
 
 enum Args {
     HELP,
@@ -154,9 +156,63 @@ static ParsedArgs* parse_params(int argc, char** argv) {
     return new ParsedArgs(file_real, file_gen, builder.build());
 }
 
+class LinearModel {
+    std::vector<double> weights;
+public:
+    LinearModel() {
+        std::ifstream model_file("../../data/linear.params");
+        double weight;
+        while (model_file >> weight) {
+            weights.push_back(weight);
+        }
+
+        assert(weights.size() == 6);
+    }
+
+    double predict(const AffineResult& result) const {
+        AffineTransform transform = result.transform;
+        double sum = weights[0] * transform.shift_x
+                   + weights[1] * transform.shift_y
+                   + weights[2] * transform.theta
+                   + weights[3] * transform.scale
+                   + weights[4] * result.residual
+                   + weights[5];
+        return 1. / (1. + exp(-sum));
+    }
+};
+
+
+double calc_metric(const Polygon& poly_real, const Polygon& poly_gen,
+                   const OptimizationParams& params, const LinearModel& model) {
+    AffineResult result = find_affine(poly_real, poly_gen, params);
+    return model.predict(result);
+}
+
 int main(int argc, char** argv) {
+    using json = nlohmann::json;
+
     ParsedArgs* args = parse_params(argc, argv);
     if (args == nullptr) {
         return 1;
     }
+
+    std::ifstream file_real(args->file_real);
+    std::ifstream file_gen(args->file_gen);
+    json real, gen;
+    file_real >> real;
+    file_gen >> gen;
+
+    if (real.size() != gen.size()) {
+        std::cout << "Files length differ" << std::endl;
+        return 1;
+    }
+
+    LinearModel model;
+
+    for (uint32_t i = 0; i < real.size(); i++) {
+        std::cout << calc_metric(Polygon(real[i]), Polygon(gen[i]),
+                                 args->params, model) << std::endl;
+    }
+
+    delete args;
 }

@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <cmath>
+#include "3rd-party/json.hpp"
 
 #ifdef WITH_PYTHON
 #include <boost/python/def.hpp>
@@ -212,8 +213,10 @@ class Polygon {
 private:
     std::vector<Point> points;
     Point _center;
+    void calc_center();
 public:
     Polygon(const std::vector<Point>& points);
+    Polygon(nlohmann::json& json);
     double distance(const Point& p) const;
     void translate(double dx, double dy);
     void rotate(double theta);
@@ -258,3 +261,4 @@ public:
 
 };
 
+AffineResult find_affine(Polygon poly_real, Polygon poly_pred, const OptimizationParams& opt_params);
