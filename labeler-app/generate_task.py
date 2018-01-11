@@ -19,7 +19,7 @@ class Collection:
 
     """
         Constructor of class collection
-        
+
         :param
         buildings -- list of Building instances
     """
@@ -314,7 +314,7 @@ def main(parsed_args):
         task_generator = TaskGenerator(collection)
 
     generate_tasks(task_generator, out_dir, parsed_args.task_size,
-                   parsed_args.n_mix, parsed_args.n_seq, task_prefix_name=task_prefix_name)
+                   parsed_args.n // 2, parsed_args.n // 2, task_prefix_name=task_prefix_name)
 
 
 def test():
@@ -352,8 +352,7 @@ if __name__ == '__main__':
     parser.add_argument('--out_dir', required=True, help='directory for generation')
 
     parser.add_argument('--task_size', required=True, type=int, help='task size')
-    parser.add_argument('--n_mix', required=True, type=int, help='number of mixed tasks')
-    parser.add_argument('--n_seq', required=True, type=int, help='number of sequential tasks')
+    parser.add_argument('-n', required=True, type=int, help='number of tasks')
 
     parser.add_argument('--variate', action='store_true', help='generate variation of markup')
     parser.add_argument('--results', help='path to results')

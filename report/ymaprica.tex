@@ -54,7 +54,7 @@
 {\footnotesize
 \begin{verbatim}
 python3 generate_task.py --data ../sample.shp --out_dir ./data/markup_tasks \
-	--task_size 20
+	--task_size 20 -n 200
 \end{verbatim}
 }
 Труды генератора надо положить в директорию data/markup\_tasks. После изменений заданий необходимо (пере)запустить сервер например такой командой:
@@ -163,7 +163,7 @@ $$
 В этих файлах порядок считается идентичным и в результате будет выдана вероятность одинаковой оценки $i$-го контура в первом файле $i$-му во втором. Эти файлы необходимо подать на вход утилите:
 {\footnotesize
 \begin{verbatim}
-ymaprica --real reference.json --gen test.json
+ymaprica --real reference.json --gen test.json --model ../data/linear.params
 \end{verbatim}}
 Результатом исполнения этой команды станет колонка чисел от 0 до 1, каждая из которой соответствует значению прогнозируемой вероятности того, что эксперт оценит два контура одинаково.
 
