@@ -53,19 +53,27 @@ def load_data(path_to_stat):
                 if contain_bad:
                     continue
 
+            isBad = False
             for markup in task["markup"]:
                 if markup["user"] == "solar":
                     continue
+                isBad = isBad or markup["isBad"]
 
-                X.append(x)
-                if markup["isBad"]:
-                    y.append(0)
-                else:
-                    y.append(1)
+            X.append(x)
+            if isBad:
+                y.append(0)
+            else:
+                y.append(1)
 
     assert (len(X) == len(y))
+
     X = np.array(X)
     y = np.array(y)
+
+    print(len(X))
+    print(np.count_nonzero(y == 0))
+    print(np.count_nonzero(y == 1))
+
     y.reshape((1, y.shape[0]))
     return X, y
 
