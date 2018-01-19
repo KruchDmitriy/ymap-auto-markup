@@ -70,8 +70,7 @@ def gen_real_examples():
     real = []
     gen = []
 
-    false_pos = cls_meta['false_pos']
-    for bld_id in false_pos:
+    for bld_id in bld_to_check:
         markups = bld_to_check[bld_id]
         original = None
         for m_id in markups:
