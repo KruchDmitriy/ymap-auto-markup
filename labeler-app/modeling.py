@@ -17,6 +17,7 @@ def load_data(path_to_stat):
 
     X = []
     y = []
+    bld_id = []
 
     for bld in bld_to_check:
         for task_id in bld_to_check[bld]:
@@ -60,6 +61,7 @@ def load_data(path_to_stat):
                 isBad = isBad or markup["isBad"]
 
             X.append(x)
+            bld_id.append(bld)
             if isBad:
                 y.append(0)
             else:
@@ -70,12 +72,8 @@ def load_data(path_to_stat):
     X = np.array(X)
     y = np.array(y)
 
-    print(len(X))
-    print(np.count_nonzero(y == 0))
-    print(np.count_nonzero(y == 1))
-
     y.reshape((1, y.shape[0]))
-    return X, y
+    return X, y, bld_id
 
 
 class AbstractModel:
@@ -84,7 +82,7 @@ class AbstractModel:
     def fit(self, path_to_stat):
         if path_to_stat is None:
             path_to_stat = AbstractModel.PATH_TO_STAT
-        X, y = load_data(path_to_stat)
+        X, y, _ = load_data(path_to_stat)
         self.clf.fit(X, y)
         self.perplexity = calc_perplexity(self.clf, X, y)
 
@@ -109,11 +107,11 @@ class AbstractModel:
     def predict_probas(self, X):
         return self.clf.predict_proba(X)
 
-    def test(self, path_to_stat):
+    def test(self, path_to_stat, log=True):
         if path_to_stat is None:
             path_to_stat = AbstractModel.PATH_TO_STAT
 
-        X, y = load_data(path_to_stat)
+        X, y, bld_id = load_data(path_to_stat)
         X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.3, shuffle=False
             )
@@ -121,12 +119,43 @@ class AbstractModel:
         self.clf.fit(X_train, y_train)
         y_pred = self.predict_probas(X_test)
         auc = roc_auc_score(y_test, y_pred[:,1])
-        print('roc auc score ' + str(auc))
 
-        class_pred = y_pred[:,1] > 0.4
+        class_pred = y_pred[:,1] > 0.7
         accuracy = accuracy_score(y_test, class_pred)
-        print('accuracy ' + str(accuracy))
 
+        true_pos = np.logical_and(class_pred == 1, y_test == 1)
+        false_pos = np.logical_and(class_pred == 1, y_test == 0)
+        true_neg = np.logical_and(class_pred == 0, y_test == 0)
+        false_neg = np.logical_and(class_pred == 0, y_test == 1)
+
+        tps = []
+        fps = []
+        tns = []
+        fns = []
+
+        for i in range(class_pred.shape[0]):
+            if true_pos[i]:
+                tps.append(bld_id[i])
+            if false_pos[i]:
+                fps.append(bld_id[i])
+            if true_neg[i]:
+                tns.append(bld_id[i])
+            if false_neg[i]:
+                fns.append(bld_id[i])
+
+        classification_meta = {
+            'true_pos': tps,
+            'false_pos': fps,
+            'true_neg': tns,
+            'false_neg': fns
+        }
+
+        if log:
+            print('roc auc score ' + str(auc))
+            print('accuracy ' + str(accuracy))
+            print('confusion matrix\n' + str(np.array([[len(tps), len(fps)], [len(fns), len(tns)]])))
+
+        return auc, accuracy, classification_meta
 
 
 class TreesModel(AbstractModel):
@@ -195,7 +224,7 @@ if __name__ == '__main__':
     parser.add_argument('--fit', action='store_true', help='fit model on user statistics')
     parser.add_argument('--test', action='store_true', help='calculate model accuracy'
                                                             '(and AUC) on splitted set')
-    parser.add_argument('--model_type', help='"linear" or "trees"')
+    parser.add_argument('--model_type', required=True, help='"linear" or "trees"')
     parser.add_argument('--path_to_stat', help='path to statistics (file bld_to_check.json)')
     parser.add_argument('--path_out_model', help='path to save model')
 

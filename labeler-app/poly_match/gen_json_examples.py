@@ -4,6 +4,7 @@ sys.path.append('..')
 import json
 import numpy as np
 from affine import PolyTransform
+from modeling import LinearModel
 
 
 def get_test_poly():
@@ -28,7 +29,7 @@ def get_poly_center(poly):
     return np.mean(poly[:-1], axis=0)
 
 
-def main():
+def gen_rotate_examples():
     poly = np.array(get_test_poly())
     poly_center = get_poly_center(poly)
     poly = PolyTransform.translate_vec(poly, -poly_center)
@@ -54,6 +55,49 @@ def main():
 
     with open('json_examples/real.json', 'w') as f:
         json.dump([poly] * 100, f)
+
+
+def gen_real_examples():
+    model = LinearModel()
+    model.load('../data/linear.model')
+
+    path_to_stat = '../data/statistics/bld_to_check.json'
+    _, _, cls_meta = model.test(path_to_stat, log=False)
+
+    with open(path_to_stat, 'r') as f:
+        bld_to_check = json.load(f)
+
+    real = []
+    gen = []
+
+    false_pos = cls_meta['false_pos']
+    for bld_id in false_pos:
+        markups = bld_to_check[bld_id]
+        original = None
+        for m_id in markups:
+            if markups[m_id]["meta"] == "original":
+                original = markups[m_id]["coords"]
+
+        if original is None:
+            raise Exception('original markup not found')
+
+        for m_id in markups:
+            if markups[m_id]["meta"] != "original":
+                real.append(original)
+                gen.append(markups[m_id]["coords"])
+
+    assert(len(real) == len(gen))
+
+    with open('json_examples/real.json', 'w') as f:
+        json.dump(real, f)
+
+    with open('json_examples/gen.json', 'w') as f:
+        json.dump(gen, f)
+
+
+def main():
+    gen_real_examples()
+
 
 if __name__ == '__main__':
     main()
