@@ -25,8 +25,6 @@ namespace utils {
         return { g_x, g_y, g_theta, g_scale };
     }
 
-    const double EPSILON = 1e-10;
-
     double point_distance(const Point& u, const Point& v) {
         return sqrt((u.x - v.x) * (u.x - v.x) + (u.y - v.y) * (u.y - v.y));
     }
