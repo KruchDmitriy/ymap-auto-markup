@@ -73,18 +73,19 @@ namespace utils {
 
     AffineTransform grad_descent(Polygon poly_real, const Polygon& poly_pred,
                                 const AffineTransform& transform,
-                                const int num_steps, const double learning_rate) {
+                                const OptimizationParams& opt_params) {
         AffineTransform cum_trans = transform;
         poly_real.transform(transform);
-        for (int i = 0; i < num_steps; i++) {
+        for (int step = 0; step < opt_params.desc_num_steps; step++) {
             AffineTransform grad_direct = poly_real.grad(poly_pred, true);
             AffineTransform grad_reverse = poly_pred.grad(poly_real, false);
 
             AffineTransform cur_trans {0., 0., 0., 1.};
-            cur_trans -= grad_direct * learning_rate / log(2. + i);
-            cur_trans -= grad_reverse * learning_rate / log(2. + i);
+            cur_trans -= grad_direct * opt_params.desc_lr / log(2. + step);
+            cur_trans -= grad_reverse * opt_params.desc_lr / log(2. + step);
+            cur_trans -= cum_trans.grad_regularization() * opt_params.reg_rate / log(2. + step);
 
-            cum_trans.merge(cur_trans);
+            cum_trans.merge(cur_trans, opt_params);
 
             poly_real.transform(cur_trans);
         }
@@ -220,13 +221,13 @@ AffineResult find_affine(Polygon poly_real, Polygon poly_pred, const Optimizatio
     for (double scale   = min_scale; scale   < max_scale; scale   += scale_step) {
         AffineTransform transform = {shift_x, shift_y, theta, scale};
 
-        transform = utils::grad_descent(poly_real, poly_pred, transform,
-            opt_params.desc_num_steps, opt_params.desc_lr);
+        transform = utils::grad_descent(poly_real, poly_pred, transform, opt_params);
 
         Polygon tmp_poly = poly_real;
         tmp_poly.transform(transform);
 
-        double res = utils::residual(tmp_poly, poly_pred);
+        double res = utils::residual(tmp_poly, poly_pred)
+                    + transform.regularization() * opt_params.reg_rate;
 
         if (res < min_res) {
             min_res = res;
@@ -237,11 +238,11 @@ AffineResult find_affine(Polygon poly_real, Polygon poly_pred, const Optimizatio
         }
     }}}}
 
-    return {{
-            best_x,
-            best_y,
-            utils::normalize_theta(best_theta), best_scale
-        } , min_res };
+    AffineTransform result {best_x, best_y, utils::normalize_theta(best_theta), best_scale};
+    poly_real.transform(result);
+    double residual = utils::residual(poly_real, poly_pred);
+
+    return { result, residual };
 }
 
 void Polygon::calc_center() {
@@ -308,10 +309,11 @@ BOOST_PYTHON_MODULE(poly_match) {
         .def("set_grid_step", &OptimizationParamsBuilder::set_grid_step)
         .def("set_desc_num_steps", &OptimizationParamsBuilder::set_desc_num_steps)
         .def("set_learn_rate", &OptimizationParamsBuilder::set_learn_rate)
+        .def("set_reg_rate", &OptimizationParamsBuilder::set_reg_rate)
         .def("build", &OptimizationParamsBuilder::build);
 
     class_<OptimizationParams>("OptimizationParams",
-        init<double, double, double, double, double, double, int, int, double>());
+        init<double, double, double, double, double, double, int, int, double, double>());
 
     class_<AffineTransform>("AffineTransform",
         init<double, double, double, double>())

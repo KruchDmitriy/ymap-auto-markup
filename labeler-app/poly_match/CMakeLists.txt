@@ -7,6 +7,8 @@ set(CMAKE_CXX_FLAGS "-Wall")
 option(WITH_PYTHON "Build with python interface" OFF)
 
 if (WITH_PYTHON)
+    add_definitions(-DWITH_PYTHON)
+
     find_package(Boost 1.60 REQUIRED COMPONENTS python numpy)
     find_package(PythonLibs REQUIRED)
 

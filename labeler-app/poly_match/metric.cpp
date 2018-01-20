@@ -1,6 +1,9 @@
 #include <iostream>
+#include <iomanip>
 #include <unordered_map>
 #include <fstream>
+#include <math.h>
+
 #include "poly_match.hpp"
 #include "3rd-party/json.hpp"
 #include "3rd-party/utm/utm.h"
@@ -264,7 +267,8 @@ int main(int argc, char** argv) {
     for (uint32_t i = 0; i < real.size(); i++) {
         Polygon real_poly = points_to_poly(real[i]);
         Polygon gen_poly = points_to_poly(gen[i]);
-        std::cout << calc_metric(real_poly, gen_poly, args->params, model) << std::endl;
+        std::cout << std::setprecision(6)
+            << calc_metric(real_poly, gen_poly, args->params, model) << std::endl;
     }
 
     delete args;

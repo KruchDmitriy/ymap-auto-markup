@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <iostream>
-#include <cmath>
+#include <math.h>
 #include "3rd-party/json.hpp"
 
 #ifdef WITH_PYTHON
@@ -14,6 +14,34 @@ namespace bp = boost::python;
 namespace np = boost::python::numpy;
 #endif
 
+struct OptimizationParams {
+    double min_shift, max_shift;
+    double min_theta, max_theta;
+    double min_scale, max_scale;
+    int grid_step;
+    int desc_num_steps;
+    double desc_lr;
+    double reg_rate;
+
+    OptimizationParams(
+        double min_shift, double max_shift,
+        double min_theta, double max_theta,
+        double min_scale, double max_scale,
+        int grid_step, int desc_num_steps,
+        double desc_lr, double reg_rate)
+    : min_shift(min_shift)
+    , max_shift(max_shift)
+    , min_theta(min_theta)
+    , max_theta(max_theta)
+    , min_scale(min_scale)
+    , max_scale(max_scale)
+    , grid_step(grid_step)
+    , desc_num_steps(desc_num_steps)
+    , desc_lr(desc_lr)
+    , reg_rate(reg_rate) {}
+};
+
+
 struct AffineTransform {
     double shift_x;
     double shift_y;
@@ -24,7 +52,7 @@ struct AffineTransform {
     : shift_x(0.)
     , shift_y(0.)
     , theta(0.)
-    , scale(0.) {}
+    , scale(1.) {}
 
     AffineTransform(double shift_x, double shift_y, double theta, double scale)
         : shift_x(shift_x)
@@ -32,7 +60,7 @@ struct AffineTransform {
         , theta(theta)
         , scale(scale) {}
 
-    void merge(const AffineTransform& transform) {
+    void merge(const AffineTransform& transform, const OptimizationParams& params) {
         const double sinT = sin(transform.theta);
         const double cosT = cos(transform.theta);
         const double x = shift_x;
@@ -43,6 +71,12 @@ struct AffineTransform {
                 + cosT * transform.scale * y + transform.shift_y;
         scale *= transform.scale;
         theta += transform.theta;
+
+        // clamp values
+        // shift_x = std::min(params.max_shift, std::max(params.min_shift, shift_x));
+        // shift_y = std::min(params.max_shift, std::max(params.min_shift, shift_y));
+        scale = std::min(params.max_scale, std::max(params.min_scale, scale));
+        theta = std::min(params.max_theta, std::max(params.min_theta, theta));
     }
 
     AffineTransform& operator+=(const AffineTransform& transform) {
@@ -51,6 +85,17 @@ struct AffineTransform {
         theta += transform.theta;
         scale += transform.scale;
         return *this;
+    }
+
+    AffineTransform grad_regularization() const {
+        return { shift_x, shift_y, theta, 1. - scale };
+    }
+
+    double regularization() const {
+        return shift_x * shift_x
+            + shift_y * shift_y
+            + theta * theta
+            + (1. - scale) * (1. - scale);
     }
 
     friend AffineTransform operator+(AffineTransform lhs, const AffineTransform& rhs) {
@@ -135,37 +180,12 @@ public:
     }
 };
 
-struct OptimizationParams {
-    double min_shift, max_shift;
-    double min_theta, max_theta;
-    double min_scale, max_scale;
-    int grid_step;
-    int desc_num_steps;
-    double desc_lr;
-
-    OptimizationParams(
-        double min_shift, double max_shift,
-        double min_theta, double max_theta,
-        double min_scale, double max_scale,
-        int grid_step, int desc_num_steps, double desc_lr)
-    : min_shift(min_shift)
-    , max_shift(max_shift)
-    , min_theta(min_theta)
-    , max_theta(max_theta)
-    , min_scale(min_scale)
-    , max_scale(max_scale)
-    , grid_step(grid_step)
-    , desc_num_steps(desc_num_steps)
-    , desc_lr(desc_lr) {}
-};
-
-
 struct OptimizationParamsBuilder {
 private:
     OptimizationParams params;
 public:
     OptimizationParamsBuilder()
-    : params(-0.1, 0.1, -M_PI, M_PI, 0.7, 1.3, 4, 10, 0.01)
+    : params(-0.1, 0.1, -M_PI / 4., M_PI / 4., 0.7, 1.3, 4, 10, 1e-2, 1e-8)
     {}
 
     void set_min_shift(double min_shift) {
@@ -202,6 +222,10 @@ public:
 
     void set_learn_rate(double rate) {
         params.desc_lr = rate;
+    }
+
+    void set_reg_rate(double rate) {
+        params.reg_rate = rate;
     }
 
     OptimizationParams build() {
