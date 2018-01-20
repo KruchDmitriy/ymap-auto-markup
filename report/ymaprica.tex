@@ -151,6 +151,44 @@ $$
 
 \section{Использование метрики}
 \label{metrica-usage}
+
+\subsection{Инструкция по сборке модуля метрики}
+Для сборки модуля необходимо:
+
+\begin{enumerate}
+\item Перейти в папку
+\begin{verbatim} {ymaprica_root_folder}/labeler-app/poly_match/ \end{verbatim}
+
+\item Выполнить следующие команды
+\begin{enumerate}
+
+\item для обычной сборки
+\begin{verbatim}
+mkdir build && cd build
+cmake .. && make
+\end{verbatim}
+
+\item для сборки с интерфейсом python (требуется boost версии не ниже 1.60)
+\begin{verbatim}
+mkdir build && cd build
+cmake .. -DWITH_PYTHON=ON
+        [-DPYTHON_LIBRARY=path_to_python_libs
+         -DPYTHON_INCLUDE_DIR=path_to_python_includes
+         -DBoost_DIR=boost_root_folder]
+make
+\end{verbatim}
+
+\end{enumerate}
+
+Пример вызова подсчета метрики:
+\begin{verbatim}
+./build/ymaprica --real json_examples/real.json
+                 --gen json_examples/gen.json
+                 --model ../data/linear.params
+\end{verbatim}
+
+\end{enumerate}
+
 Для вычисления метрики можно воспользоваться одной из трех опций: вызов c++ библиотеки, вызов ее порта в python через boost, воспользоваться утилитой из командной строки. Первые 2 варианта проще посмотреть в коде, поэтому остановимся на последнем. Чтобы воспользоваться метрикой необходимо иметь два списка контуров в json формате вида:
 {\tiny
 \begin{verbatim}
