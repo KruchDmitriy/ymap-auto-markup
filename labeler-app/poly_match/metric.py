@@ -38,6 +38,8 @@ def parse_params(args):
         builder.set_desc_num_steps(args.desc_num_steps)
     if args.learn_rate is not None:
         builder.set_learn_rate(args.learn_rate)
+    if args.reg_rate is not None:
+        builder.set_reg_rate(args.reg_rate)
 
     params = builder.build()
 
@@ -50,8 +52,6 @@ def points_to_poly(points):
                                      latitude=point[1])
         np_points[i][0] = utm_center[1]
         np_points[i][1] = utm_center[0]
-
-    print(np_points)
 
     return Polygon(np_points)
 
@@ -74,13 +74,6 @@ def main(args):
 
         transform = result.transform
         residual = result.residual
-
-        print((
-                transform.shift_x,
-                transform.shift_y,
-                transform.theta,
-                1. - transform.scale,
-                residual))
 
         x = np.abs(np.array((
                 transform.shift_x,
@@ -112,6 +105,7 @@ if __name__ == '__main__':
     grad_group = parser.add_argument_group('optimization parameters for gradient descent')
     grad_group.add_argument('--desc_num_steps', type=float)
     grad_group.add_argument('--learn_rate', type=float)
+    grad_group.add_argument('--reg_rate', type=float)
 
     args = parser.parse_args()
 
