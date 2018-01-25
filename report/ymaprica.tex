@@ -7,6 +7,7 @@
 \usepackage[T1,T2A]{fontenc}
 \usepackage[russian]{babel}
 \usepackage{tikz}
+\usepackage{hyperref}
 \usetikzlibrary{shadows}
 
 
@@ -151,13 +152,15 @@ $$
 
 \section{Инструкция по обучению модели}
 \label{model-fit}
+Прежде всего, склонируйте репозиторий:\\
+\url{https://github.com/KruchDmitriy/ymap-auto-markup}
 
 \subsection{Зависимости}
 Перед обучением модели необходимо установить библиотеку LightGBM через pip
 \begin{verbatim}
 pip install lightgbm
 \end{verbatim}
-или собрать вручную (https://github.com/Microsoft/LightGBM).
+или собрать вручную (\url{https://github.com/Microsoft/LightGBM}).
 
 \subsection{Обучение}
 Для обучения модели перейдите в папку \texttt{labeler-app} и исполните
