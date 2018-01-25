@@ -7,12 +7,16 @@
 #include "poly_match.hpp"
 #include "3rd-party/json.hpp"
 #include "3rd-party/utm/utm.h"
+#include "LightGBM/boosting.h"
+#include "LightGBM/prediction_early_stop.h"
+#include "3rd-party/LightGBM/src/application/predictor.hpp"
 
 enum Args {
     HELP,
     REAL,
     GEN,
-    MODEL,
+    MODEL_FILE,
+    MODEL_TYPE,
     MIN_SHIFT,
     MAX_SHIFT,
     MIN_THETA,
@@ -26,28 +30,34 @@ enum Args {
 
 static void small_help() {
     std::cout <<
-    "usage: ./metric [-h] --real REAL --gen GEN --model MODEL [--min_shift MIN_SHIFT]" << std::endl <<
-    "             [--max_shift MAX_SHIFT] [--min_theta MIN_THETA]" << std::endl <<
-    "             [--max_theta MAX_THETA] [--min_scale MIN_SCALE]" << std::endl <<
-    "             [--max_scale MAX_SCALE] [--grid_step GRID_STEP]" << std::endl <<
+    "usage: ./ymaprica [-h] --real REAL --gen GEN" << std::endl <<
+    "              --model_file MODEL_FILE --model_type MODEL_TYPE" << std::endl <<
+    "             [--min_shift MIN_SHIFT] [--max_shift MAX_SHIFT]" << std::endl <<
+    "             [--min_theta MIN_THETA] [--max_theta MAX_THETA]" << std::endl <<
+    "             [--min_scale MIN_SCALE] [--max_scale MAX_SCALE]" << std::endl <<
+    "             [--grid_step GRID_STEP]" << std::endl <<
     "             [--desc_num_steps DESC_NUM_STEPS] [--learn_rate LEARN_RATE]" << std::endl <<
-    "./metric: error: the following arguments are required: --real, --gen, --model" << std::endl;
+    "./ymaprica: error: the following arguments are required:"  << std::endl <<
+    "              --real, --gen, --model_file, --model_type" << std::endl;
 }
 
 static void help() {
     std::cout <<
-    "usage: metric.py [-h] --real REAL --gen GEN --model MODEL [--min_shift MIN_SHIFT]" << std::endl <<
-    "             [--max_shift MAX_SHIFT] [--min_theta MIN_THETA]" << std::endl <<
-    "             [--max_theta MAX_THETA] [--min_scale MIN_SCALE]" << std::endl <<
-    "             [--max_scale MAX_SCALE] [--grid_step GRID_STEP]" << std::endl <<
-    "             [--desc_num_steps DESC_NUM_STEPS] [--learn_rate LEARN_RATE]" << std::endl << std::endl <<
+    "usage: ./ymaprica [-h] --real REAL --gen GEN" << std::endl <<
+    "              --model_file MODEL_FILE --model_type MODEL_TYPE" << std::endl <<
+    "             [--min_shift MIN_SHIFT] [--max_shift MAX_SHIFT]" << std::endl <<
+    "             [--min_theta MIN_THETA] [--max_theta MAX_THETA]" << std::endl <<
+    "             [--min_scale MIN_SCALE] [--max_scale MAX_SCALE]" << std::endl <<
+    "             [--grid_step GRID_STEP]" << std::endl <<
+    "             [--desc_num_steps DESC_NUM_STEPS] [--learn_rate LEARN_RATE]" << std::endl <<
     "arguments:" << std::endl <<
-    "  -h, --help            show this help message and exit" << std::endl <<
-    "  --real REAL           path to json file with list polygons [poly1, poly2, poly3]" << std::endl <<
-    "  --gen GEN             path to json file with list generated polygons [gen_poly1," << std::endl <<
-    "                        gen_poly2, gen_poly3]gen_poly1 will be compared with" << std::endl <<
-    "                        poly1 etc" << std::endl <<
-    "  --model MODEL         path to model (from modeling.py, should be in data/linear.param)" << std::endl << std::endl <<
+    "  -h, --help               show this help message and exit" << std::endl <<
+    "  --real REAL              path to json file with list polygons [poly1, poly2, poly3]" << std::endl <<
+    "  --gen GEN                path to json file with list generated polygons [gen_poly1," << std::endl <<
+    "                           gen_poly2, gen_poly3]gen_poly1 will be compared with" << std::endl <<
+    "                           poly1 etc" << std::endl <<
+    "  --model_type MODEL_TYPE  linear or trees " << std::endl <<
+    "  --model_file MODEL_FILE  path to model (from modeling.py, should be in data/linear.param)" << std::endl << std::endl <<
     "optimization parameters for grid search:" << std::endl <<
     "  --min_shift MIN_SHIFT" << std::endl <<
     "  --max_shift MAX_SHIFT" << std::endl <<
@@ -62,15 +72,19 @@ static void help() {
 }
 
 struct ParsedArgs {
-    char* file_real;
-    char* file_gen;
-    char* file_model;
+    const char* file_real;
+    const char* file_gen;
+    const char* file_model;
+    const char* model_type;
     OptimizationParams params;
 
-    ParsedArgs(char* file_real, char* file_gen, char* file_model, OptimizationParams params)
+    ParsedArgs(const char* file_real, const char* file_gen,
+               const char* file_model, const char* model_type,
+               OptimizationParams params)
     : file_real(file_real)
     , file_gen(file_gen)
     , file_model(file_model)
+    , model_type(model_type)
     , params(params) {}
 };
 
@@ -79,7 +93,8 @@ static ParsedArgs* parse_params(int argc, char** argv) {
         {"-h", HELP}, {"--help", HELP},
         {"--real", REAL},
         {"--gen", GEN},
-        {"--model", MODEL},
+        {"--model_file", MODEL_FILE},
+        {"--model_type", MODEL_TYPE},
         {"--min_shift", MIN_SHIFT},
         {"--max_shift", MAX_SHIFT},
         {"--min_theta", MIN_THETA},
@@ -96,6 +111,7 @@ static ParsedArgs* parse_params(int argc, char** argv) {
     char* file_real;
     char* file_gen;
     char* file_model;
+    char* model_type;
 
     for (int i = 1; i < argc; i += 2) {
         switch (mapping[argv[i]]) {
@@ -110,8 +126,12 @@ static ParsedArgs* parse_params(int argc, char** argv) {
                 file_gen = argv[i + 1];
                 required_completed++;
                 break;
-            case MODEL:
+            case MODEL_FILE:
                 file_model = argv[i + 1];
+                required_completed++;
+                break;
+            case MODEL_TYPE:
+                model_type = argv[i + 1];
                 required_completed++;
                 break;
             case MIN_SHIFT: {
@@ -162,18 +182,23 @@ static ParsedArgs* parse_params(int argc, char** argv) {
         }
     }
 
-    if (required_completed < 3) {
+    if (required_completed < 4) {
         small_help();
         return nullptr;
     }
 
-    return new ParsedArgs(file_real, file_gen, file_model, builder.build());
+    return new ParsedArgs(file_real, file_gen, file_model, model_type, builder.build());
 }
 
-class LinearModel {
+class Model {
+public:
+    virtual double predict(const AffineResult& result) = 0;
+};
+
+class LinearModel : public Model {
     std::vector<double> weights;
 public:
-    LinearModel(char* model_file_path) {
+    LinearModel(const char* model_file_path) {
         std::ifstream model_file(model_file_path);
 
         if (!model_file) {
@@ -188,7 +213,7 @@ public:
         assert(weights.size() == 6);
     }
 
-    double predict(const AffineResult& result) const {
+    double predict(const AffineResult& result) override {
         AffineTransform transform = result.transform;
         double sum = weights[0] * abs(transform.shift_x)
                    + weights[1] * abs(transform.shift_y)
@@ -200,11 +225,38 @@ public:
     }
 };
 
+class TreesModel : public Model {
+    std::unique_ptr<LightGBM::Boosting> gbm;
+    LightGBM::PredictionEarlyStopConfig pred_early_stop_config;
+    LightGBM::PredictionEarlyStopInstance early_stop;
+    double output;
+public:
+    TreesModel(const char* model_file) {
+        using namespace LightGBM;
+        gbm = std::unique_ptr<Boosting>(
+            Boosting::CreateBoosting("gbdt", model_file));
+        early_stop = CreatePredictionEarlyStopInstance(
+            "binary", pred_early_stop_config);
+    }
+
+    double predict(const AffineResult& result) override {
+        auto transform = result.transform;
+        double features[] = {
+            abs(transform.shift_x),
+            abs(transform.shift_y),
+            abs(transform.theta),
+            abs(1. - transform.scale),
+            abs(result.residual)
+        };
+        gbm->Predict(features, &output, &early_stop);
+        return output;
+    }
+};
 
 double calc_metric(const Polygon& poly_real, const Polygon& poly_gen,
-                   const OptimizationParams& params, const LinearModel& model) {
+                   const OptimizationParams& params, Model* model) {
     AffineResult result = find_affine(poly_real, poly_gen, params);
-    return model.predict(result);
+    return model->predict(result);
 }
 
 void convert_coords_utm(double lat, double lon, double* east, double* north) {
@@ -262,7 +314,15 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    LinearModel model(args->file_model);
+    Model* model;
+    std::string model_type = args->model_type;
+    if (model_type == "linear") {
+        model = new LinearModel(args->file_model);
+    } else if (model_type == "trees") {
+        model = new TreesModel(args->file_model);
+    } else {
+        throw std::logic_error("Unknown model type " + model_type);
+    }
 
     for (uint32_t i = 0; i < real.size(); i++) {
         Polygon real_poly = points_to_poly(real[i]);
@@ -272,4 +332,6 @@ int main(int argc, char** argv) {
     }
 
     delete args;
+
+    return 0;
 }
