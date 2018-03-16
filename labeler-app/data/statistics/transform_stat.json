@@ -1,0 +1,22 @@
+{
+    "original": {
+        "numBad": 1400,
+        "numGood": 3286
+    },
+    "point_shift": {
+        "numBad": 402,
+        "numGood": 503
+    },
+    "rotate": {
+        "numBad": 378,
+        "numGood": 592
+    },
+    "scale": {
+        "numBad": 381,
+        "numGood": 670
+    },
+    "trans": {
+        "numBad": 323,
+        "numGood": 567
+    }
+}

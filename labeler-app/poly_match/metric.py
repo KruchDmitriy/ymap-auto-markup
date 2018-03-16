@@ -6,7 +6,7 @@ import utm
 import json
 import argparse
 import numpy as np
-from modeling import LinearModel
+from modeling import LinearModel, TreesModel
 from poly_match import find_affine, OptimizationParamsBuilder, Polygon
 from affine import AffineMx
 
@@ -65,12 +65,21 @@ def main(args):
     assert(len(real_polys) == len(pred_polys))
 
     opt_params = parse_params(args)
-    for real, pred in zip(real_polys, pred_polys):
+    if args.model_type == 'linear':
+        model = LinearModel()
+    elif args.model_type == 'trees':
+        model = TreesModel()
+    else:
+        raise ValueError('unknown model type')
+
+    model.load(args.model_file)
+
+    xs = np.zeros((len(real_polys), 5))
+
+    for i, (real, pred) in enumerate(zip(real_polys, pred_polys)):
         real_poly = points_to_poly(real)
         pred_poly = points_to_poly(pred)
         result = find_affine(real_poly, pred_poly, opt_params)
-        model = LinearModel()
-        model.load(args.model)
 
         transform = result.transform
         residual = result.residual
@@ -81,6 +90,7 @@ def main(args):
                 transform.theta,
                 1. - transform.scale,
                 residual)))
+
         print(model.predict_proba(x))
 
 
@@ -91,7 +101,8 @@ if __name__ == '__main__':
     parser.add_argument('--gen', required=True, help='path to json file with list generated polygons '
                                                      '[gen_poly1, gen_poly2, gen_poly3]'
                                                      'gen_poly1 will be compared with poly1 etc')
-    parser.add_argument('--model', required=True, help='path to model (from modeling.py, should be in data/linear.param)')
+    parser.add_argument('--model_file', required=True, help='path to model (from modeling.py, should be in data/*.model')
+    parser.add_argument('--model_type', required=True, help='"linear" or "trees"')
 
     grid_group = parser.add_argument_group('optimization parameters for grid search')
     grid_group.add_argument('--min_shift', type=float)

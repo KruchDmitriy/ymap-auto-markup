@@ -7,6 +7,7 @@
 \usepackage[T1,T2A]{fontenc}
 \usepackage[russian]{babel}
 \usepackage{tikz}
+\usepackage{hyperref}
 \usetikzlibrary{shadows}
 
 
@@ -149,6 +150,48 @@ $$
 $$
 где $\delta >0$---параметр оптимизации.
 
+\section{Инструкция по обучению модели}
+\label{model-fit}
+Прежде всего, склонируйте репозиторий:\\
+\url{https://github.com/KruchDmitriy/ymap-auto-markup}
+
+\subsection{Зависимости}
+Перед обучением модели необходимо установить библиотеку LightGBM через pip
+\begin{verbatim}
+pip install lightgbm
+\end{verbatim}
+или собрать вручную (\url{https://github.com/Microsoft/LightGBM}).
+
+\subsection{Обучение}
+Для обучения модели перейдите в папку \texttt{labeler-app} и исполните
+\begin{verbatim}
+python modeling.py --fit --model_type linear
+\end{verbatim}
+в случае линейной модели и ``trees'', соотв. для модели деревьев решений.
+В результате выполнения скрипта появится файл в папке \texttt{data/linear.model}
+(для деревьев \texttt{data/trees.model}),
+который в дальнейшем будет использован для вычисления метрики.
+
+Также скрипт выдаёт метрику ``perplexity'' (число от 0 до 1) которая показывает насколько хорошо мы моделируем исходные данные (равна средней геометрической вероятности правильно угадать класс семпла).
+
+\subsection{Тестирование модели}
+Для подсчета метрик указанных в разделе ``Результаты'' запустите:
+\begin{verbatim}
+python modeling.py --test --model_type linear
+\end{verbatim}
+
+В качестве данных для обучения/тестирования используется статистика, собранная на стенде разметки (находится в папке \texttt{data/statistics}). Для указания другой директории необходимо передать ключ \texttt{\-\-path\_to\_stat}.
+
+Для подсчета статистики запустите скрипт:
+{\small
+\begin{verbatim}
+python statistics.py --data data/results.json --out_dir data/statistics
+\end{verbatim}
+}
+
+Где файл \texttt{results.json} -- результат работы экспертов\\
+{(\small \texttt{data/results.json} сохраняется автоматически на серверной стороне стенда)}.
+
 \section{Использование метрики}
 \label{metrica-usage}
 
@@ -184,7 +227,8 @@ make
 \begin{verbatim}
 ./build/ymaprica --real json_examples/real.json
                  --gen json_examples/gen.json
-                 --model ../data/linear.params
+                 --model_type linear
+                 --model_file ../data/linear.model
 \end{verbatim}
 
 \end{enumerate}
@@ -201,7 +245,8 @@ make
 В этих файлах порядок считается идентичным и в результате будет выдана вероятность одинаковой оценки $i$-го контура в первом файле $i$-му во втором. Эти файлы необходимо подать на вход утилите:
 {\footnotesize
 \begin{verbatim}
-ymaprica --real reference.json --gen test.json --model ../data/linear.params
+ymaprica --real reference.json --gen test.json \
+    --model_file ../data/linear.model --model_type linear
 \end{verbatim}}
 Результатом исполнения этой команды станет колонка чисел от 0 до 1, каждая из которой соответствует значению прогнозируемой вероятности того, что эксперт оценит два контура одинаково.
 
@@ -231,6 +276,12 @@ ROC AUC классификатора: 0.88.
 
 Также имеет место интерпретация параметров модели -- $w$. Чем больше модуль числа $w_i$, тем более важен $i$ признак для предсказания. Далее идут значения $w$ для каждого из параметров:
 сдвиг по $x$: 0.53780502, сдвиг по $y$: 0.42510037, поворот: 6.64590915, масштаб: 7.68758817, невязка($\delta$) 5.28174901.
+
+Значения метрик для модели деревьев решений:
+
+Точность 88\%.
+
+ROC AUC: 0.90.
 
 \section{Выводы}
 \label{conclusions}
