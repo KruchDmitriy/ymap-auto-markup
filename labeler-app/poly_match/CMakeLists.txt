@@ -29,8 +29,13 @@ target_link_libraries(ymaprica ${project_name})
 target_link_libraries(ymaprica utm)
 target_link_libraries(ymaprica _lightgbm)
 
+add_executable(metric_test test.cpp 3rd-party/catch.h)
+target_link_libraries(metric_test ${project_name})
+target_link_libraries(metric_test utm)
+
 if (WITH_PYTHON)
     target_link_libraries(${project_name} ${Boost_LIBRARIES})
     target_link_libraries(ymaprica ${PYTHON_LIBRARIES})
+    target_link_libraries(metric_test ${PYTHON_LIBRARIES})
 endif (WITH_PYTHON)
 
