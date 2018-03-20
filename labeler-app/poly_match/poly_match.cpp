@@ -220,8 +220,8 @@ double AffineTransform::gradStep(const Polygon& src, const Polygon& dst, double 
   theta -= (g_theta + lambda * theta) * step / 100;
   scale -= (g_scale - lambda * (1. - scale)) * step / 100;
   scale = std::min(1.5, std::max(0.5, scale));
-  c_x -= g_cx * step;
-  c_y -= g_cy * step;
+//  c_x -= g_cx * step;
+//  c_y -= g_cy * step;
 
   return g_module;
 }
