@@ -49,7 +49,7 @@ struct Point {
   Point(double x, double y) : x(x), y(y) {}
 
   double distance(const Point& other) const {
-    return sqr(x - other.x) + sqr(y - other.y);
+    return sqrt(sqr(x - other.x) + sqr(y - other.y));
   }
 };
 
@@ -126,35 +126,50 @@ struct AffineTransform {
   double shift_y;
   double theta;
   double scale;
-  double c_x;
-  double c_y;
 
   AffineTransform()
           : shift_x(0.)
           , shift_y(0.)
           , theta(0.)
-          , scale(1.)
-          , c_x(0.)
-          , c_y(0.) {}
+          , scale(1.) {}
 
-  AffineTransform(double shift_x, double shift_y, double theta, double scale, double c_x, double c_y)
+  AffineTransform(double shift_x, double shift_y, double theta, double scale)
           : shift_x(shift_x)
           , shift_y(shift_y)
           , theta(theta)
-          , scale(scale)
-          , c_x(c_x)
-          , c_y(c_y) {}
+          , scale(scale) {}
 
-  double gradStep(const Polygon& src, const Polygon& dst, double step, double lambda);
+  void merge(const AffineTransform& transform, const OptimizationParams& params) {
+    const double sinT = sin(transform.theta);
+    const double cosT = cos(transform.theta);
+    const double x = shift_x;
+    const double y = shift_y;
+    shift_x = cosT * transform.scale * x
+              + sinT * transform.scale * y + transform.shift_x;
+    shift_y = -sinT * transform.scale * x
+              + cosT * transform.scale * y + transform.shift_y;
+    scale *= transform.scale;
+    theta += transform.theta;
+
+    // clamp values
+    // shift_x = std::min(params.max_shift, std::max(params.min_shift, shift_x));
+    // shift_y = std::min(params.max_shift, std::max(params.min_shift, shift_y));
+    scale = std::min(params.max_scale, std::max(params.min_scale, scale));
+    theta = std::min(params.max_theta, std::max(params.min_theta, theta));
+  }
 
   AffineTransform& operator+=(const AffineTransform& transform) {
     shift_x += transform.shift_x;
     shift_y += transform.shift_y;
     theta += transform.theta;
     scale += transform.scale;
-    c_x += c_x;
-    c_y += c_y;
     return *this;
+  }
+  
+  
+
+  AffineTransform grad_regularization() const {
+    return { shift_x, shift_y, theta, 1. - scale };
   }
 
   double regularization() const {
@@ -174,8 +189,6 @@ struct AffineTransform {
     shift_y *= lambda;
     theta *= lambda;
     scale *= lambda;
-    c_x *= c_x;
-    c_y *= c_y;
     return *this;
   }
 
@@ -189,8 +202,6 @@ struct AffineTransform {
     shift_y /= lambda;
     theta /= lambda;
     scale /= lambda;
-    c_x /= c_x;
-    c_y /= c_y;
     return *this;
   }
 
@@ -204,8 +215,6 @@ struct AffineTransform {
     shift_y -= transform.shift_y;
     theta -= transform.theta;
     scale -= transform.scale;
-    c_x -= c_x;
-    c_y -= c_y;
     return *this;
   }
 
@@ -217,10 +226,8 @@ struct AffineTransform {
   friend std::ostream& operator<< (std::ostream& os, const AffineTransform& trans) {
     os << "dx: " << trans.shift_x << " ";
     os << "dy: " << trans.shift_y << " ";
-    os << "th: " << trans.theta << " ";
-    os << "sc: " << trans.scale << " ";
-    os << "cx: " << trans.c_x << " ";
-    os << "cy: " << trans.c_y << " ";
+    os << "theta: " << trans.theta << " ";
+    os << "scale: " << trans.scale << " ";
 
     return os;
   }
@@ -234,16 +241,95 @@ struct AffineTransform {
       double px = p.x;
       double py = p.y;
       Point transformed;
-      transformed.x = cosT * scale * (px - c_x) + c_x
-                      + sinT * scale * (py - c_y) + c_y
+      transformed.x = cosT * scale * px
+                      + sinT * scale * py
                       + shift_x;
 
-      transformed.y = -sinT * scale * (px - c_x) + c_x
-                      + cosT * scale * (py - c_y) + c_y
+      transformed.y = -sinT * scale * px
+                      + cosT * scale * py
                       + shift_y;
       points.push_back(transformed);
     }
     return Polygon(points);
+  }
+
+  double gradStep(const Polygon& src, const Polygon& dst, double step, double lambda) {
+    const Polygon& img = transform(src);
+
+    double g_x = 0.;
+    double g_y = 0.;
+    double g_theta = 0.;
+    double g_scale = 0.;
+
+    double totalDistance = 0;
+
+    for (int i = 0; i < img.size(); i++) {
+      const Point& a_i = img.vertex(i);
+      const Point& orig_a_i = src.vertex(i);
+      Point closest;
+      double distance = std::numeric_limits<double>::max();
+      for (const Point& b_j: dst.get_points()) {
+        if (distance > a_i.distance(b_j)) {
+          distance = a_i.distance(b_j);
+          closest = b_j;
+        }
+      }
+      totalDistance += distance;
+      {
+        const double dist_x = a_i.x - closest.x;
+        const double dist_y = a_i.y - closest.y;
+        const double sinT = sin(theta);
+        const double cosT = cos(theta);
+
+        const double s = scale;
+
+        g_x += dist_x;
+        g_y += dist_y;
+        g_theta += dist_x * (orig_a_i.x * s * (- sinT) + orig_a_i.y * s * cosT)
+                  + dist_y * (orig_a_i.x * s * (- cosT) + orig_a_i.y * s * (- sinT));
+        g_scale += dist_x * (orig_a_i.x * cosT + orig_a_i.y * sinT)
+                  + dist_y * (orig_a_i.x * (- sinT) + orig_a_i.y * cosT);
+      };
+    }
+
+    for (const Point& b_j: src.get_points()) {
+      int closestIdx = 0;
+      double distance = std::numeric_limits<double>::max();
+      for (int i = 0; i < img.size(); i++) {
+        const Point& a_i = img.vertex(i);
+        if (distance > a_i.distance(b_j)) {
+          distance = a_i.distance(b_j);
+          closestIdx = i;
+        }
+      }
+      totalDistance += distance;
+      {
+        const Point& closest = b_j;
+        const Point& a_i = img.vertex(closestIdx);
+        const Point& orig_a_i = src.vertex(closestIdx);
+
+        const double dist_x = a_i.x - closest.x;
+        const double dist_y = a_i.y - closest.y;
+        const double sinT = sin(theta);
+        const double cosT = cos(theta);
+
+        const double s = scale;
+
+        g_x += dist_x;
+        g_y += dist_y;
+        g_theta += dist_x * (orig_a_i.x * s * (- sinT) + orig_a_i.y * s * cosT)
+                   + dist_y * (orig_a_i.x * s * (- cosT) + orig_a_i.y * s * (- sinT));
+        g_scale += dist_x * (orig_a_i.x * cosT + orig_a_i.y * sinT)
+                   + dist_y * (orig_a_i.x * (- sinT) + orig_a_i.y * cosT);
+      }
+    }
+
+    const double g_module = sqrt(sqr(g_x) + sqr(g_y) + sqr(g_theta) + sqr(g_scale));
+    shift_x -= (g_x + lambda * shift_x) * step;
+    shift_y -= (g_y + lambda * shift_y) * step;
+    theta -= (g_theta + lambda * theta) * step / 100;
+    scale -= (g_scale + lambda * scale) * step / 100;
+    return g_module;
   }
 };
 
@@ -274,7 +360,7 @@ private:
   OptimizationParams params;
 public:
   OptimizationParamsBuilder()
-          : params(-0.1, 0.1, -M_PI / 4., M_PI / 4., 0.7, 1.3, 4, 1000000, 1e-3, 0.)
+          : params(-0.1, 0.1, -M_PI / 4., M_PI / 4., 0.7, 1.3, 4, 10000, 1e-2, 1e-4)
   {}
 
   void set_min_shift(double min_shift) {

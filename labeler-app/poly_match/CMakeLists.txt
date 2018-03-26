@@ -21,13 +21,13 @@ set_target_properties(${project_name} PROPERTIES PREFIX "")
 file(GLOB_RECURSE UTM_SOURCE_FILES "3rd-party/utm/*")
 add_library(utm SHARED ${UTM_SOURCE_FILES})
 
-include_directories("3rd-party/LightGBM/include")
-add_subdirectory("${PROJECT_SOURCE_DIR}/3rd-party/LightGBM" EXCLUDE_FROM_ALL)
+#include_directories("3rd-party/LightGBM/include")
+#add_subdirectory("${PROJECT_SOURCE_DIR}/3rd-party/LightGBM" EXCLUDE_FROM_ALL)
 
 add_executable(ymaprica metric.cpp)
 target_link_libraries(ymaprica ${project_name})
 target_link_libraries(ymaprica utm)
-target_link_libraries(ymaprica _lightgbm)
+#target_link_libraries(ymaprica _lightgbm)
 
 add_executable(metric_test test.cpp 3rd-party/catch.h)
 target_link_libraries(metric_test ${project_name})
