@@ -132,8 +132,6 @@ double AffineTransform::gradStep(const Polygon& src, const Polygon& dst, double 
   double g_y = 0.;
   double g_theta = 0.;
   double g_scale = 0.;
-  double g_cx = 0.;
-  double g_cy = 0.;
 
   double totalDistance = 0;
 
@@ -152,8 +150,6 @@ double AffineTransform::gradStep(const Polygon& src, const Polygon& dst, double 
     {
       const double dist_x = a_i.x - closest.x;
       const double dist_y = a_i.y - closest.y;
-      const double alpha_x = a_i.x - c_x;
-      const double alpha_y = a_i.y - c_y;
       const double sinT = sin(theta);
       const double cosT = cos(theta);
 
@@ -161,12 +157,10 @@ double AffineTransform::gradStep(const Polygon& src, const Polygon& dst, double 
 
       g_x += dist_x;
       g_y += dist_y;
-      g_theta += dist_x * (alpha_x * s * (- sinT) + alpha_y * s * cosT)
-                 + dist_y * (alpha_x * s * (- cosT) + alpha_y * s * (- sinT));
-      g_scale += dist_x * (alpha_x * cosT + alpha_y * sinT)
-                 + dist_y * (alpha_x * (- sinT) + alpha_y * cosT);
-      g_cx += dist_x * (- s * cosT + 1.) + dist_y * (s * sinT + 1.);
-      g_cy += dist_x * (- s * sinT + 1.) + dist_y * (- s * cosT + 1.);
+      g_theta += dist_x * (orig_a_i.x * s * (- sinT) + orig_a_i.y * s * cosT)
+                 + dist_y * (orig_a_i.x * s * (- cosT) + orig_a_i.y * s * (- sinT));
+      g_scale += dist_x * (orig_a_i.x * cosT + orig_a_i.y * sinT)
+                 + dist_y * (orig_a_i.x * (- sinT) + orig_a_i.y * cosT);
     };
   }
 
@@ -188,8 +182,6 @@ double AffineTransform::gradStep(const Polygon& src, const Polygon& dst, double 
 
       const double dist_x = a_i.x - closest.x;
       const double dist_y = a_i.y - closest.y;
-      const double alpha_x = a_i.x - c_x;
-      const double alpha_y = a_i.y - c_y;
       const double sinT = sin(theta);
       const double cosT = cos(theta);
 
@@ -197,12 +189,10 @@ double AffineTransform::gradStep(const Polygon& src, const Polygon& dst, double 
 
       g_x += dist_x;
       g_y += dist_y;
-      g_theta += dist_x * (alpha_x * s * (- sinT) + alpha_y * s * cosT)
-                 + dist_y * (alpha_x * s * (- cosT) + alpha_y * s * (- sinT));
-      g_scale += dist_x * (alpha_x * cosT + alpha_y * sinT)
-                 + dist_y * (alpha_x * (- sinT) + alpha_y * cosT);
-      g_cx += dist_x * (- s * cosT + 1.) + dist_y * (s * sinT + 1.);
-      g_cy += dist_x * (- s * sinT + 1.) + dist_y * (- s * cosT + 1.);
+      g_theta += dist_x * (orig_a_i.x * s * (- sinT) + orig_a_i.y * s * cosT)
+                 + dist_y * (orig_a_i.x * s * (- cosT) + orig_a_i.y * s * (- sinT));
+      g_scale += dist_x * (orig_a_i.x * cosT + orig_a_i.y * sinT)
+                 + dist_y * (orig_a_i.x * (- sinT) + orig_a_i.y * cosT);
     }
   }
 
@@ -211,29 +201,25 @@ double AffineTransform::gradStep(const Polygon& src, const Polygon& dst, double 
   g_y /= num_points;
   g_theta /= num_points;
   g_scale /= num_points;
-  g_cx /= num_points;
-  g_cy /= num_points;
 
   const double g_module = sqrt(sqr(g_x) + sqr(g_y) + sqr(g_theta) + sqr(g_scale));
   shift_x -= (g_x + lambda * shift_x) * step;
   shift_y -= (g_y + lambda * shift_y) * step;
-  theta -= (g_theta + lambda * theta) * step / 100;
-  scale -= (g_scale - lambda * (1. - scale)) * step / 100;
+  theta -= (g_theta + lambda * theta) * step / 10;
+  scale -= (g_scale - lambda * (1. - scale)) * step / 10;
   scale = std::min(1.5, std::max(0.5, scale));
-//  c_x -= g_cx * step;
-//  c_y -= g_cy * step;
 
   return g_module;
 }
 
 AffineResult find_affine(Polygon poly_real, Polygon poly_pred, const OptimizationParams& opt_params) {
-  Point center1 = poly_real.center();
+  Point center = poly_real.center();
 
-  poly_real.translate(-center1.x, -center1.y);
-  poly_pred.translate(-center1.x, -center1.y);
+  poly_real.translate(-center.x, -center.y);
+  poly_pred.translate(-center.x, -center.y);
 
   AffineTransform result = utils::grad_descent(poly_real, poly_pred,
-                          {0, 0, 0, 1, 0, 0}, opt_params);
+                          {0, 0, 0, 1}, opt_params);
 
   Polygon tmp_real = result.transform(poly_real);
   double residual = utils::residual(tmp_real, poly_pred);
@@ -295,23 +281,16 @@ BOOST_PYTHON_MODULE(poly_match) {
         .def("as_np_array", &Polygon::as_np_array);
 
     class_<OptimizationParamsBuilder>("OptimizationParamsBuilder", init<>())
-        .def("set_min_shift", &OptimizationParamsBuilder::set_min_shift)
-        .def("set_max_shift", &OptimizationParamsBuilder::set_max_shift)
-        .def("set_min_theta", &OptimizationParamsBuilder::set_min_theta)
-        .def("set_max_theta", &OptimizationParamsBuilder::set_max_theta)
-        .def("set_min_scale", &OptimizationParamsBuilder::set_min_scale)
-        .def("set_max_scale", &OptimizationParamsBuilder::set_max_scale)
-        .def("set_grid_step", &OptimizationParamsBuilder::set_grid_step)
         .def("set_desc_num_steps", &OptimizationParamsBuilder::set_desc_num_steps)
         .def("set_learn_rate", &OptimizationParamsBuilder::set_learn_rate)
         .def("set_reg_rate", &OptimizationParamsBuilder::set_reg_rate)
         .def("build", &OptimizationParamsBuilder::build);
 
     class_<OptimizationParams>("OptimizationParams",
-        init<double, double, double, double, double, double, int, int, double, double>());
+        init<double, double, double>());
 
     class_<AffineTransform>("AffineTransform",
-        init<double, double, double, double, double, double>())
+        init<double, double, double, double>())
         .add_property("shift_x" , &AffineTransform::shift_x)
         .add_property("shift_y" , &AffineTransform::shift_y)
         .add_property("theta"   , &AffineTransform::theta)

@@ -7,9 +7,9 @@
 #include "poly_match.hpp"
 #include "3rd-party/json.hpp"
 #include "3rd-party/utm/utm.h"
-//#include "LightGBM/boosting.h"
-//#include "LightGBM/prediction_early_stop.h"
-//#include "3rd-party/LightGBM/src/application/predictor.hpp"
+#include "LightGBM/boosting.h"
+#include "LightGBM/prediction_early_stop.h"
+#include "3rd-party/LightGBM/src/application/predictor.hpp"
 
 enum Args {
     HELP,
@@ -225,37 +225,37 @@ public:
     }
 };
 
-//class TreesModel : public Model {
-//    std::unique_ptr<LightGBM::Boosting> gbm;
-//    LightGBM::PredictionEarlyStopConfig pred_early_stop_config;
-//    LightGBM::PredictionEarlyStopInstance early_stop;
-//    double output;
-//public:
-//    TreesModel(const char* model_file) {
-//        using namespace LightGBM;
-//        gbm = std::unique_ptr<Boosting>(
-//            Boosting::CreateBoosting("gbdt", model_file));
-//        early_stop = CreatePredictionEarlyStopInstance(
-//            "binary", pred_early_stop_config);
-//    }
-//
-//    double predict(const AffineResult& result) override {
-//        auto transform = result.transform;
-//        double features[] = {
-//            abs(transform.shift_x),
-//            abs(transform.shift_y),
-//            abs(transform.theta),
-//            abs(1. - transform.scale),
-//            abs(result.residual)
-//        };
-//        gbm->Predict(features, &output, &early_stop);
-//        return output;
-//    }
-//};
-//
+class TreesModel : public Model {
+    std::unique_ptr<LightGBM::Boosting> gbm;
+    LightGBM::PredictionEarlyStopConfig pred_early_stop_config;
+    LightGBM::PredictionEarlyStopInstance early_stop;
+    double output;
+public:
+    TreesModel(const char* model_file) {
+        using namespace LightGBM;
+        gbm = std::unique_ptr<Boosting>(
+            Boosting::CreateBoosting("gbdt", model_file));
+        early_stop = CreatePredictionEarlyStopInstance(
+            "binary", pred_early_stop_config);
+    }
+
+    double predict(const AffineResult& result) override {
+        auto transform = result.transform;
+        double features[] = {
+            abs(transform.shift_x),
+            abs(transform.shift_y),
+            abs(transform.theta),
+            abs(1. - transform.scale),
+            abs(result.residual)
+        };
+        gbm->Predict(features, &output, &early_stop);
+        return output;
+    }
+};
+
 double calc_metric(const Polygon& poly_real, const Polygon& poly_gen,
                    const OptimizationParams& params, Model* model) {
-    AffineResult result = find_affine(poly_gen, poly_real, params);
+    AffineResult result = find_affine(poly_real, poly_gen, params);
     return model->predict(result);
 }
 
@@ -319,7 +319,7 @@ int main(int argc, char** argv) {
     if (model_type == "linear") {
         model = new LinearModel(args->file_model);
     } else if (model_type == "trees") {
-//        model = new TreesModel(args->file_model);
+        model = new TreesModel(args->file_model);
     } else {
         throw std::logic_error("Unknown model type " + model_type);
     }
